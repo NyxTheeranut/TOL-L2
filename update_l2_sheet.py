@@ -39,7 +39,7 @@ import openpyxl
 
 # Keep this in sync with DEFAULT_SYNC_URL in index.html -- if you change one,
 # change the other.
-SYNC_URL = "REPLACE_WITH_YOUR_APPS_SCRIPT_WEB_APP_URL"
+SYNC_URL = "https://script.google.com/macros/s/AKfycbwBmi2TmYQwUzkYBWlkSo5MtWPfk43GQdxHbeIrVP7I1MHEoTbtWnHsDsA6_0a-9zDkeQ/exec"
 
 DASHBOARD_DIR = Path(__file__).resolve().parent.parent
 
