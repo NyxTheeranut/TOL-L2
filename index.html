@@ -256,6 +256,36 @@ body{
 }
 .leaflet-control-zoom a:hover{background:var(--surface-2) !important;}
 .leaflet-bar{border:1px solid var(--border) !important;box-shadow:var(--shadow-sm) !important;}
+.locate-control a{
+  background:var(--surface) !important;color:var(--text) !important;
+  display:flex !important;align-items:center;justify-content:center;
+}
+.locate-control a:hover{background:var(--surface-2) !important;}
+.locate-control a.locating{color:var(--accent) !important;}
+.locate-control a.locating svg{animation:locateSpin 1s linear infinite;}
+@keyframes locateSpin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){ .locate-control a.locating svg{animation:none;} }
+
+.user-loc-wrap{position:relative;width:18px;height:18px;}
+.user-loc-pulse{
+  position:absolute;inset:-11px;border-radius:50%;
+  background:rgba(47,111,237,.28);
+  animation:userLocPulse 2.2s ease-out infinite;
+}
+@keyframes userLocPulse{0%{transform:scale(.35);opacity:1;}100%{transform:scale(1.7);opacity:0;}}
+@media (prefers-reduced-motion: reduce){ .user-loc-pulse{animation:none;opacity:0;} }
+.user-loc-dot{
+  position:absolute;inset:3px;border-radius:50%;
+  background:#2f6fed;border:3px solid var(--surface);
+  box-shadow:0 1px 4px rgba(10,16,22,.4);
+}
+
+.locate-toast{
+  position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:1000;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:8px 14px;font-size:12.5px;color:var(--text);box-shadow:var(--shadow-sm);
+  max-width:calc(100% - 32px);text-align:center;display:none;
+}
 .leaflet-tooltip.l2-tooltip{
   background:var(--surface);color:var(--text);border:1px solid var(--border);
   border-radius:6px;box-shadow:var(--shadow-sm);
@@ -536,6 +566,7 @@ table.promo-table td.special{font-weight:700;}
 
     <div class="map-panel">
       <div id="map"></div>
+      <div class="locate-toast" id="locateToast"></div>
 
       <details class="map-legend" open>
         <summary>Discount, by pin color</summary>
@@ -656,7 +687,7 @@ function applyTheme(theme){
   tileLayer = L.tileLayer(cfg.url, { attribution:cfg.attribution, maxZoom:cfg.maxZoom }).addTo(map);
   map.setMaxZoom(cfg.maxZoom);
   if(map.getZoom() > cfg.maxZoom) map.setZoom(cfg.maxZoom);
-  DATA.forEach(d=> d.marker.setIcon(markerIcon(d, currentLod, d.marker===selectedMarker)));
+  DATA.forEach(d=> refreshMarkerStyle(d.marker, d.marker===selectedMarker));
   render();
 }
 document.getElementById('themeToggle').addEventListener('click', ()=>{
@@ -687,7 +718,9 @@ function refreshTierEndpoints(){
     lo: cs.getPropertyValue('--tier-lo').trim(),
     hi: cs.getPropertyValue('--tier-hi').trim(),
     loInk: cs.getPropertyValue('--tier-lo-ink').trim(),
-    hiInk: cs.getPropertyValue('--tier-hi-ink').trim()
+    hiInk: cs.getPropertyValue('--tier-hi-ink').trim(),
+    accent: cs.getPropertyValue('--accent').trim(),
+    surface: cs.getPropertyValue('--surface').trim()
   };
 }
 refreshTierEndpoints();
@@ -712,7 +745,8 @@ function pinIconDetailed(discPct100, selected){
 }
 /* Cheap fallback shape (no rotate, no box-shadow — the two priciest things to
    paint hundreds of at once) used whenever a lot of pins share the viewport;
-   swaps back to the full teardrop pin once panning/zooming narrows it down. */
+   swaps back to the full teardrop pin once panning/zooming narrows it down.
+   Desktop only — touch devices use canvas-rendered pins below instead. */
 function pinIconSimple(discPct100){
   const c = tierColors(discPct100);
   return L.divIcon({
@@ -724,6 +758,62 @@ function pinIconSimple(discPct100){
 }
 function markerIcon(d, simple, selected){
   return (selected || !simple) ? pinIconDetailed(d.cond.discPct*100, selected) : pinIconSimple(d.cond.discPct*100);
+}
+
+/* ===== touch-device pins: one shared <canvas>, not one DOM node per pin =====
+   Every mobile lag report traced back to the same ceiling: a divIcon pin is
+   a real DOM element, and creating/positioning/removing hundreds of them on
+   every pan is real layout + paint + compositing work, no matter how much
+   the shape or the animation timing gets tuned. Leaflet's own Canvas
+   renderer draws every shape belonging to it into ONE shared <canvas> --
+   updating what's visible is then just redrawing pixels, not touching the
+   DOM at all. PinMarker extends CircleMarker (so pan/zoom/hit-testing/
+   click/tooltip all keep working exactly as Leaflet already handles them)
+   and only adds one thing on top: the discount-% text, drawn straight into
+   the same canvas pass. Desktop keeps the nicer divIcon teardrop pin above
+   (its performance was never the complaint) — this path is IS_TOUCH-only. */
+const canvasRenderer = IS_TOUCH ? L.canvas({ padding: 0.4 }) : null;
+const PinMarker = IS_TOUCH ? L.CircleMarker.extend({
+  _updatePath: function(){
+    L.CircleMarker.prototype._updatePath.call(this);
+    const ctx = this._renderer._ctx;
+    if(!ctx) return;
+    const p = this._point;
+    ctx.save();
+    ctx.fillStyle = this.options.textColor;
+    ctx.font = '700 10px "JetBrains Mono", ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.options.text, p.x, p.y + 0.5);
+    ctx.restore();
+  }
+}) : null;
+
+function makeTouchPin(d){
+  const c = tierColors(d.cond.discPct*100);
+  return new PinMarker([d.lat, d.lon], {
+    renderer: canvasRenderer,
+    radius: 12, weight: 1.5,
+    color: tierEndpoints.surface, fillColor: c.bg, fillOpacity: 1,
+    text: Math.round(d.cond.discPct*100)+'%', textColor: c.ink
+  });
+}
+
+/* Applies both the selected/unselected look AND current theme colors (so
+   this also doubles as the theme-refresh path — see applyTheme) to one
+   marker, DOM or canvas, whichever this device is using. */
+function refreshMarkerStyle(marker, selected){
+  const d = DATA[marker.l2idx];
+  if(IS_TOUCH){
+    const c = tierColors(d.cond.discPct*100);
+    marker.setStyle({
+      radius: selected?15:12, weight: selected?3:1.5,
+      color: selected ? tierEndpoints.accent : tierEndpoints.surface,
+      fillColor: c.bg, textColor: c.ink
+    });
+  } else {
+    marker.setIcon(markerIcon(d, currentLod, selected));
+  }
 }
 
 /* ===== filtering / state ===== */
@@ -777,30 +867,52 @@ let currentFilteredIdx = [];
 
 /* Diffs old vs. new visible sets on every moveend and only touches markers
    actually entering/leaving (rather than clearing + rebuilding everything in
-   view every time). Also switches every visible pin to a cheaper, unrotated
-   shape once there are a lot of them on screen at once, and back to the full
-   pin once panning/zooming narrows the view down. */
+   view every time). Desktop also switches every visible pin to a cheaper,
+   unrotated DOM shape once a lot of them share the screen at once (touch
+   devices don't need this at all -- canvas-rendered pins, see above, don't
+   get meaningfully more expensive as the count on screen grows). */
 let visiblePinSet = new Set();
 let currentLod = false;
-const LOD_SIMPLE_THRESHOLD = IS_TOUCH ? 35 : 180;
+const LOD_SIMPLE_THRESHOLD = 180;
 
 function updateVisiblePins(){
   const viewBounds = map.getBounds().pad(0.3);
   const newVisible = currentFilteredIdx.filter(i=> viewBounds.contains([DATA[i].lat, DATA[i].lon]));
   const newSet = new Set(newVisible);
-  const simple = newVisible.length > LOD_SIMPLE_THRESHOLD;
-  const lodChanged = simple !== currentLod;
-  currentLod = simple;
 
-  visiblePinSet.forEach(i=>{
-    if(!newSet.has(i)) pinLayer.removeLayer(DATA[i].marker);
-  });
-  newVisible.forEach(i=>{
-    const d = DATA[i];
-    const wasVisible = visiblePinSet.has(i);
-    if(lodChanged || !wasVisible) d.marker.setIcon(markerIcon(d, simple, i===state.selected));
-    if(!wasVisible) pinLayer.addLayer(d.marker);
-  });
+  if(IS_TOUCH){
+    // Add what's newly needed right now, synchronously -- that's what the
+    // user is actually waiting to see. Removing what's no longer needed is
+    // deferred a frame: at the initial full-extent view essentially every
+    // pin is "visible" (correctly — you can see everything), so a big jump
+    // away from that view (e.g. picking a stop from the List) means removing
+    // over a thousand layers in one go. That bulk removal was the actual
+    // remaining freeze, not a DOM-vs-canvas thing (both paths diff the same
+    // way) — and it's invisible work either way, since those pins are
+    // already off-screen the moment the view moves. Re-checking against the
+    // live visiblePinSet (not the captured list) inside the callback covers
+    // the case where a later pan/zoom needs one of them visible again before
+    // this runs.
+    const toRemove = [];
+    visiblePinSet.forEach(i=>{ if(!newSet.has(i)) toRemove.push(i); });
+    newVisible.forEach(i=>{ if(!visiblePinSet.has(i)) pinLayer.addLayer(DATA[i].marker); });
+    if(toRemove.length){
+      requestAnimationFrame(()=>{
+        toRemove.forEach(i=>{ if(!visiblePinSet.has(i)) pinLayer.removeLayer(DATA[i].marker); });
+      });
+    }
+  } else {
+    visiblePinSet.forEach(i=>{ if(!newSet.has(i)) pinLayer.removeLayer(DATA[i].marker); });
+    const simple = newVisible.length > LOD_SIMPLE_THRESHOLD;
+    const lodChanged = simple !== currentLod;
+    currentLod = simple;
+    newVisible.forEach(i=>{
+      const d = DATA[i];
+      const wasVisible = visiblePinSet.has(i);
+      if(lodChanged || !wasVisible) d.marker.setIcon(markerIcon(d, simple, i===state.selected));
+      if(!wasVisible) pinLayer.addLayer(d.marker);
+    });
+  }
   visiblePinSet = newSet;
 }
 
@@ -846,8 +958,7 @@ function render(){
 
 function clearSelectedIcon(){
   if(selectedMarker){
-    const d = DATA[selectedMarker.l2idx];
-    selectedMarker.setIcon(markerIcon(d, currentLod, false));
+    refreshMarkerStyle(selectedMarker, false);
     selectedMarker = null;
   }
 }
@@ -861,7 +972,7 @@ function selectStop(i){
   const d = DATA[i];
 
   clearSelectedIcon();
-  d.marker.setIcon(markerIcon(d, currentLod, true));
+  refreshMarkerStyle(d.marker, true);
   selectedMarker = d.marker;
 
   // Was a full querySelectorAll('.stop-row') scan-and-toggle over every row
@@ -990,6 +1101,79 @@ if(window.matchMedia('(max-width:640px)').matches){
   if(legend) legend.removeAttribute('open');
 }
 
+/* ===== "you are here" — a live GPS marker, separate from the L2 pins =====
+   A plain divIcon regardless of IS_TOUCH: there's only ever one of these on
+   screen at a time, so the DOM-per-marker cost that matters for 1,166 L2
+   pins doesn't apply here at all. */
+let userLocMarker = null, geoWatchId = null;
+
+function userLocIcon(){
+  return L.divIcon({
+    html: '<div class="user-loc-wrap"><div class="user-loc-pulse"></div><div class="user-loc-dot"></div></div>',
+    className: 'user-loc-outer', iconSize:[18,18], iconAnchor:[9,9]
+  });
+}
+function showLocateToast(msg){
+  const el = document.getElementById('locateToast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(showLocateToast._t);
+  showLocateToast._t = setTimeout(()=>{ el.style.display = 'none'; }, 4000);
+}
+
+const LocateControl = L.Control.extend({
+  options: { position: 'bottomright' },
+  onAdd: function(){
+    const container = L.DomUtil.create('div', 'leaflet-bar locate-control');
+    const link = L.DomUtil.create('a', '', container);
+    link.href = '#';
+    link.title = 'Show my location';
+    link.setAttribute('role', 'button');
+    link.setAttribute('aria-label', 'Show my location');
+    link.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+    L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', onLocateClick);
+    this._link = link;
+    return container;
+  }
+});
+
+function onLocateClick(){
+  if(!navigator.geolocation){
+    showLocateToast("This browser can't share your location.");
+    return;
+  }
+  // Already watching -- a second tap just recenters on the last known fix,
+  // instead of starting a redundant watch.
+  if(geoWatchId != null){
+    if(userLocMarker) map.setView(userLocMarker.getLatLng(), Math.max(map.getZoom(), 15), {animate:!IS_TOUCH});
+    return;
+  }
+  const link = document.querySelector('.locate-control a');
+  if(link) link.classList.add('locating');
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos)=>{
+      if(link) link.classList.remove('locating');
+      const ll = [pos.coords.latitude, pos.coords.longitude];
+      if(!userLocMarker){
+        userLocMarker = L.marker(ll, { icon: userLocIcon(), zIndexOffset: 1000, interactive:false }).addTo(map);
+        map.setView(ll, Math.max(map.getZoom(), 15), {animate:!IS_TOUCH});
+      } else {
+        userLocMarker.setLatLng(ll);
+      }
+    },
+    (err)=>{
+      if(link) link.classList.remove('locating');
+      geoWatchId = null;
+      showLocateToast(
+        err.code === err.PERMISSION_DENIED ? 'Location permission denied.' :
+        err.code === err.TIMEOUT ? 'Location took too long — try again.' :
+        'Could not get your location.'
+      );
+    },
+    { enableHighAccuracy:true, maximumAge:15000, timeout:15000 }
+  );
+}
+
 function initApp(){
   DATA.forEach(d=>{ d.cond = findCondition(d.arch, d.arpaGroup, d.port, d.nad); });
   document.getElementById('statTotal').textContent = DATA.length.toLocaleString('en-US');
@@ -1006,6 +1190,7 @@ function initApp(){
     zoomAnimation: !IS_TOUCH, fadeAnimation: !IS_TOUCH, markerZoomAnimation: !IS_TOUCH,
   }).fitBounds(bounds, {padding:[40,40], animate:!IS_TOUCH});
   L.control.zoom({position:'bottomright'}).addTo(map);
+  new LocateControl().addTo(map);
   tileLayer = L.tileLayer(initialCfg.url, {
     attribution: initialCfg.attribution,
     maxZoom: initialCfg.maxZoom
@@ -1014,9 +1199,13 @@ function initApp(){
   pinLayer = L.layerGroup().addTo(map);
 
   DATA.forEach((d,i)=>{
-    const marker = L.marker([d.lat, d.lon], { icon: pinIconDetailed(d.cond.discPct*100, false) });
+    const marker = IS_TOUCH
+      ? makeTouchPin(d)
+      : L.marker([d.lat, d.lon], { icon: pinIconDetailed(d.cond.discPct*100, false) });
     marker.l2idx = i;
-    marker.bindTooltip(locationLabel(d).primary, { direction:'top', offset:[0,-32], className:'l2-tooltip' });
+    marker.bindTooltip(locationLabel(d).primary, {
+      direction:'top', offset: IS_TOUCH ? [0,-13] : [0,-32], className:'l2-tooltip'
+    });
     marker.on('click', ()=> selectStop(i));
     d.marker = marker;
   });
