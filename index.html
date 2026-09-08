@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 Discount Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#eef2f5;
+  --surface:#ffffff;
+  --surface-2:#f5f8fa;
+  --surface-3:#eaf0f3;
+  --border:#dbe3e9;
+  --border-soft:#e7edf1;
+  --text:#182430;
+  --text-muted:#5c6d7a;
+  --text-faint:#8fa0ac;
+  --accent:#d64a2e;
+  --accent-ink:#ffffff;
+  --accent-soft:#fbe3db;
+  --amber:#e8ab2e;
+  --amber-ink:#3a2a06;
+  --amber-soft:#fbf0d6;
+  --arch-attack:#d64a2e;
+  --arch-replace:#5b5fc7;
+  --tier-lo:#f4c04d; --tier-lo-ink:#3a2a06;
+  --tier-hi:#cc4a2c; --tier-hi-ink:#ffffff;
+  --shadow-sm:0 1px 3px rgba(23,35,45,0.08);
+  --shadow-md:0 10px 30px rgba(23,35,45,0.16);
+  --radius:10px;
+  --radius-sm:6px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1218;
+    --surface:#131b23;
+    --surface-2:#182029;
+    --surface-3:#1c2530;
+    --border:#293440;
+    --border-soft:#212b35;
+    --text:#e7edf2;
+    --text-muted:#8fa0ac;
+    --text-faint:#5f7280;
+    --accent:#ff7a55;
+    --accent-ink:#1a0d07;
+    --accent-soft:#3a2018;
+    --amber:#f0bd4e;
+    --amber-ink:#2c2005;
+    --amber-soft:#332608;
+    --arch-attack:#ff7a55;
+    --arch-replace:#9a9eef;
+    --tier-lo:#ffd873; --tier-lo-ink:#2c2005;
+    --tier-hi:#ff6a4a; --tier-hi-ink:#200a06;
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md:0 14px 34px rgba(0,0,0,0.55);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1218;
+  --surface:#131b23;
+  --surface-2:#182029;
+  --surface-3:#1c2530;
+  --border:#293440;
+  --border-soft:#212b35;
+  --text:#e7edf2;
+  --text-muted:#8fa0ac;
+  --text-faint:#5f7280;
+  --accent:#ff7a55;
+  --accent-ink:#1a0d07;
+  --accent-soft:#3a2018;
+  --amber:#f0bd4e;
+  --amber-ink:#2c2005;
+  --amber-soft:#332608;
+  --arch-attack:#ff7a55;
+  --arch-replace:#9a9eef;
+  --tier-lo:#ffd873; --tier-lo-ink:#2c2005;
+  --tier-hi:#ff6a4a; --tier-hi-ink:#200a06;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:0 14px 34px rgba(0,0,0,0.55);
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:"Kanit","Noto Sans Thai",system-ui,sans-serif;
+  font-size:14px;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;}
+.tnum{font-variant-numeric:tabular-nums;}
+
+/* ---------- Login gate ---------- */
+.login-gate{
+  position:fixed;inset:0;z-index:2000;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);
+}
+.login-card{
+  width:320px;max-width:calc(100% - 48px);
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow-md);
+  padding:34px 28px;text-align:center;
+}
+.login-card h1{font-size:20px;font-weight:700;margin:16px 0 6px;text-wrap:balance;}
+.login-card h1 span{color:var(--accent);}
+.login-card p{font-size:13px;color:var(--text-muted);margin:0 0 22px;line-height:1.5;}
+#gsiButton{display:flex;justify-content:center;min-height:40px;}
+.login-status{margin-top:14px;font-size:12.5px;color:var(--text-muted);line-height:1.5;display:none;}
+.login-status.error{color:var(--accent);}
+.login-spinner{
+  width:20px;height:20px;margin:0 auto;border-radius:50%;
+  border:2.5px solid var(--border);border-top-color:var(--accent);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){ .login-spinner{animation:none;} }
+
+/* ---------- App shell ---------- */
+.app{display:flex;flex-direction:column;height:100vh;}
+
+.topbar{
+  display:flex;align-items:center;gap:14px;
+  height:58px;flex:0 0 58px;
+  padding:0 18px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  z-index:1200;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-title{font-weight:700;font-size:16.5px;letter-spacing:.1px;}
+.brand-sub{font-size:11.5px;color:var(--text-faint);font-weight:500;margin-top:1px;}
+.topbar-search{
+  margin-left:6px;
+  flex:0 1 340px;
+  position:relative;
+}
+.topbar-search input{
+  width:100%;
+  height:34px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  padding:0 14px 0 34px;
+  font:inherit;
+  font-size:13px;
+  outline:none;
+}
+.topbar-search input:focus{border-color:var(--accent);}
+.topbar-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.55;}
+.topbar-spacer{flex:1;}
+.topbar-stat{
+  display:flex;align-items:baseline;gap:6px;
+  padding:6px 14px;border-radius:999px;
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-weight:600;font-size:12.5px;
+  white-space:nowrap;
+}
+.topbar-stat b{font-size:15px;}
+.topbar-stat span{color:var(--text-muted);font-weight:500;}
+.theme-toggle{
+  width:34px;height:34px;flex:0 0 34px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text-muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.theme-toggle:hover{color:var(--text);background:var(--surface-3);}
+.theme-toggle svg{width:17px;height:17px;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="dark"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="dark"] .theme-toggle .icon-moon{display:block;}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .theme-toggle .icon-sun{display:none;}
+  :root:not([data-theme="light"]) .theme-toggle .icon-moon{display:block;}
+}
+
+.body-row{flex:1;display:flex;min-height:0;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:352px;flex:0 0 352px;
+  display:flex;flex-direction:column;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  min-height:0;
+}
+.sidebar-section{padding:14px 16px 12px;border-bottom:1px solid var(--border-soft);}
+.filter-label{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:7px;}
+.segmented{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;}
+.segmented button{
+  flex:1;border:none;background:transparent;color:var(--text-muted);
+  font:inherit;font-size:12.5px;font-weight:600;padding:6px 6px;border-radius:6px;cursor:pointer;
+}
+.segmented button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
+.select-row{display:flex;gap:8px;margin-top:9px;}
+.select-row select{
+  flex:1;height:32px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);font:inherit;font-size:12.5px;padding:0 8px;
+}
+
+.list-summary{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px 8px;font-size:12px;color:var(--text-muted);
+}
+.list-summary b{color:var(--text);font-weight:700;}
+#sortSelect{border:none;background:transparent;color:var(--text-muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+
+.stop-list{flex:1;overflow-y:auto;padding:0 8px 12px;}
+.stop-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 8px;margin:2px 0;border-radius:8px;
+  cursor:pointer;border:1px solid transparent;
+}
+.stop-row:hover{background:var(--surface-2);}
+.stop-row.selected{background:var(--accent-soft);border-color:var(--accent);}
+.stop-dot{width:11px;height:11px;border-radius:50%;flex:0 0 11px;border:1.5px solid var(--surface);box-shadow:0 0 0 1px rgba(10,16,22,.2);}
+.stop-main{min-width:0;flex:1;}
+.stop-id{font-size:12.5px;font-weight:600;}
+.stop-village{font-size:11.5px;color:var(--text);font-weight:500;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stop-loc{font-size:11px;color:var(--text-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stop-meta{text-align:right;flex:0 0 auto;}
+.stop-disc{font-size:12.5px;font-weight:700;color:var(--accent);}
+.stop-arpa{font-size:10.5px;color:var(--text-faint);margin-top:1px;}
+.empty-note{padding:28px 18px;text-align:center;color:var(--text-faint);font-size:12.5px;line-height:1.6;}
+
+/* ---------- Map ---------- */
+.map-panel{flex:1;position:relative;overflow:hidden;background:var(--bg);}
+#map{position:absolute;inset:0;background:var(--bg);}
+/* There's no free no-key dark OSM tile set, so dark mode inverts the same
+   light tiles instead of switching providers — hue-rotate corrects the
+   colors invert() flips (e.g. water going orange). */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) #map .leaflet-tile-pane{ filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+}
+:root[data-theme="dark"] #map .leaflet-tile-pane{ filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+.leaflet-control-attribution{
+  background:var(--surface) !important;color:var(--text-faint) !important;
+  font-family:"Kanit",sans-serif !important; font-size:10px !important;
+}
+.leaflet-control-attribution a{color:var(--text-muted) !important;}
+.leaflet-control-zoom a{
+  background:var(--surface) !important;color:var(--text) !important;border-color:var(--border) !important;
+}
+.leaflet-control-zoom a:hover{background:var(--surface-2) !important;}
+.leaflet-bar{border:1px solid var(--border) !important;box-shadow:var(--shadow-sm) !important;}
+.leaflet-tooltip.l2-tooltip{
+  background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;box-shadow:var(--shadow-sm);
+  font-family:"Kanit",sans-serif;font-size:12px;font-weight:600;
+  padding:4px 9px;
+}
+.leaflet-tooltip-top.l2-tooltip::before{border-top-color:var(--surface);}
+
+/* pin markers */
+.pin-wrap{position:relative;width:30px;height:40px;}
+.pin-body{
+  position:absolute;width:26px;height:26px;left:2px;top:0;
+  border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg);
+  border:2px solid var(--surface);
+  box-shadow:0 2px 6px rgba(10,16,22,.4);
+}
+.pin-text{
+  position:absolute;left:0;top:1px;width:30px;text-align:center;
+  font-size:10px;font-weight:800;line-height:24px;pointer-events:none;
+  font-family:"JetBrains Mono",monospace;
+}
+.pin-wrap.selected .pin-body{width:32px;height:32px;left:-1px;top:-2px;box-shadow:0 3px 10px rgba(10,16,22,.5),0 0 0 4px var(--accent-soft);}
+.pin-wrap.selected .pin-text{line-height:30px;font-size:11px;top:-1px;}
+.pin-wrap.dim{opacity:.18;}
+.pin-simple{
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--surface);
+  font-family:"JetBrains Mono",monospace;font-size:8.5px;font-weight:800;
+}
+
+.district-label{
+  display:block;transform:translate(-50%,-50%);white-space:nowrap;
+  font-size:12.5px;font-weight:700;letter-spacing:.02em;
+  text-shadow:0 1px 0 var(--surface), 0 -1px 0 var(--surface), 1px 0 0 var(--surface), -1px 0 0 var(--surface), 0 2px 6px rgba(0,0,0,.25);
+  pointer-events:none;
+}
+.map-legend{
+  position:absolute;left:16px;bottom:16px;z-index:800;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:10px 13px;box-shadow:var(--shadow-sm);font-size:11.5px;color:var(--text-muted);
+  width:230px;
+}
+.map-legend summary{
+  font-weight:700;color:var(--text);font-size:11.5px;
+  cursor:pointer;list-style:none;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.map-legend summary::-webkit-details-marker{display:none;}
+.map-legend summary::after{
+  content:'';flex:0 0 auto;width:7px;height:7px;
+  border-right:1.5px solid var(--text-faint);border-bottom:1.5px solid var(--text-faint);
+  transform:rotate(45deg);transition:transform .18s ease;margin-right:1px;
+}
+.map-legend[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
+.map-legend[open] summary{margin-bottom:8px;}
+.legend-body .row{display:flex;align-items:center;gap:7px;margin-top:4px;}
+.legend-body .row i{width:15px;height:15px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);flex:0 0 15px;border:1.5px solid var(--surface);box-shadow:0 0 0 1px rgba(10,16,22,.15);}
+.legend-scale{margin-top:2px;}
+.legend-bar{height:9px;border-radius:5px;background:linear-gradient(90deg, var(--tier-lo), var(--tier-hi));}
+.legend-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:var(--text-faint);}
+.map-legend .foot{margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);color:var(--text-faint);line-height:1.5;}
+
+/* ---------- Detail panel ---------- */
+.detail-panel{
+  position:absolute;top:16px;right:16px;bottom:16px;
+  width:428px;max-width:calc(100% - 32px);
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow-md);
+  display:flex;flex-direction:column;
+  transform:translateX(460px);opacity:0;pointer-events:none;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1), opacity .22s ease;
+  z-index:900;
+}
+.detail-panel.open{transform:translateX(0);opacity:1;pointer-events:auto;}
+.detail-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:16px 16px 12px;border-bottom:1px solid var(--border-soft);flex:0 0 auto;
+}
+.detail-village{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
+.detail-id{font-family:"JetBrains Mono",monospace;font-size:16px;font-weight:600;}
+.detail-loc{font-size:12px;color:var(--text-muted);margin-top:4px;}
+.detail-close{
+  width:28px;height:28px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text-muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+}
+.detail-close:hover{color:var(--text);}
+.detail-body{flex:1;overflow-y:auto;padding:14px 16px 18px;}
+
+.gmaps-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;margin-bottom:14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-2);
+  color:var(--text);text-decoration:none;font-size:12.5px;font-weight:600;
+}
+.gmaps-btn:hover{background:var(--surface-3);border-color:var(--accent);}
+.gmaps-btn svg{flex:0 0 auto;color:var(--accent);}
+.gmaps-btn .ext{margin-left:auto;color:var(--text-faint);}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px;}
+.stat-tile{
+  background:var(--surface-2);border-left:3px solid var(--accent);border-radius:8px;
+  padding:9px 11px;
+}
+.stat-tile.alt{border-left-color:var(--arch-replace);}
+.stat-tile .lbl{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);}
+.stat-tile .val{font-size:15px;font-weight:700;margin-top:3px;line-height:1.25;}
+.stat-tile .val.mono{font-family:"JetBrains Mono",monospace;font-size:13.5px;}
+
+.promo-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.promo-head h3{margin:0;font-size:13px;font-weight:700;}
+.promo-head .badge{
+  font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);
+  padding:3px 9px;border-radius:999px;
+}
+table.promo-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+table.promo-table thead th{
+  background:var(--amber-soft);color:var(--amber-ink);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  text-align:left;padding:7px 6px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;
+}
+table.promo-table thead th.num{text-align:right;}
+table.promo-table td{padding:7px 6px;border-bottom:1px solid var(--border-soft);vertical-align:top;}
+table.promo-table tbody tr:nth-child(even){background:var(--surface-2);}
+table.promo-table td.num{text-align:right;white-space:nowrap;}
+table.promo-table td.mkt{font-family:"JetBrains Mono",monospace;font-weight:600;white-space:nowrap;}
+table.promo-table td.desc{color:var(--text-muted);line-height:1.4;}
+table.promo-table td.pct{font-weight:700;color:var(--accent);white-space:nowrap;}
+table.promo-table td.normal{color:var(--text-faint);text-decoration:line-through;}
+table.promo-table td.special{font-weight:700;}
+
+.detail-foot{
+  margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);
+  font-size:11px;color:var(--text-faint);line-height:1.6;
+}
+
+/* scrollbars */
+.stop-list::-webkit-scrollbar, .detail-body::-webkit-scrollbar{width:8px;}
+.stop-list::-webkit-scrollbar-thumb, .detail-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+
+@media (max-width:860px){
+  .sidebar{width:290px;flex-basis:290px;}
+  .detail-panel{width:100%;right:8px;left:8px;max-width:none;}
+  .topbar-search{display:none;}
+}
+</style>
+</head>
+<body>
+<div id="loginGate" class="login-gate">
+  <div class="login-card">
+    <svg width="40" height="40" viewBox="0 0 30 30" fill="none">
+      <circle cx="15" cy="7" r="3.4" fill="var(--arch-replace)"/>
+      <circle cx="6" cy="17" r="3.4" fill="var(--amber)"/>
+      <circle cx="24" cy="17" r="3.4" fill="var(--arch-attack)"/>
+      <circle cx="15" cy="24" r="2.4" fill="var(--text-faint)"/>
+      <path d="M15 7 L6 17 M15 7 L24 17 M6 17 L15 24 M24 17 L15 24" stroke="var(--border)" stroke-width="1.4"/>
+    </svg>
+    <h1>L2 Discount <span>Map</span></h1>
+    <p>Sign in with your work Google account to view the map. Nothing loads until you're signed in.</p>
+    <div id="gsiButton"></div>
+    <div id="loginStatus" class="login-status"></div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <circle cx="15" cy="7" r="3.4" fill="var(--arch-replace)"/>
+        <circle cx="6" cy="17" r="3.4" fill="var(--amber)"/>
+        <circle cx="24" cy="17" r="3.4" fill="var(--arch-attack)"/>
+        <circle cx="15" cy="24" r="2.4" fill="var(--text-faint)"/>
+        <path d="M15 7 L6 17 M15 7 L24 17 M6 17 L15 24 M24 17 L15 24" stroke="var(--border)" stroke-width="1.4"/>
+      </svg>
+      <div>
+        <div class="brand-title">L2 Discount Map</div>
+        <div class="brand-sub">NTB &middot; Pak Kret / Bang Bua Thong / Sai Noi</div>
+      </div>
+    </div>
+    <div class="topbar-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-stat"><b id="statShown">0</b><span>/ <b id="statTotal">0</b> L2 with an active discount</span></div>
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.5 8.5 0 019.3 3.6a.6.6 0 00-.7-.8A9.6 9.6 0 1021.2 15.4a.6.6 0 00-.8-.7z"/></svg>
+    </button>
+  </div>
+
+  <div class="body-row">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="filter-label">Archetype</div>
+        <div class="segmented" id="archSeg">
+          <button data-v="all" class="active">All</button>
+          <button data-v="Attack">Attack</button>
+          <button data-v="Replace &amp; Cover">Replace &amp; Cover</button>
+        </div>
+        <div class="select-row">
+          <select id="distSelect">
+            <option value="all">All districts</option>
+            <option value="Bang Bua Thong">Bang Bua Thong</option>
+            <option value="Pak Kret">Pak Kret</option>
+            <option value="Sai Noi">Sai Noi</option>
+          </select>
+          <select id="portSelect">
+            <option value="all">All port groups</option>
+            <option value="01_High ≥40%">High port &ge;40%</option>
+            <option value="00_Low <40%">Low port &lt;40%</option>
+          </select>
+        </div>
+      </div>
+      <div class="list-summary">
+        <span>Showing <b id="listCount">0</b> stops</span>
+        <select id="sortSelect">
+          <option value="disc">Sort: highest discount</option>
+          <option value="arpa">Sort: highest ARPA</option>
+          <option value="dist">Sort: district</option>
+        </select>
+      </div>
+      <div class="stop-list" id="stopList"></div>
+    </div>
+
+    <div class="map-panel">
+      <div id="map"></div>
+
+      <details class="map-legend" open>
+        <summary>Discount, by pin color</summary>
+        <div class="legend-body">
+          <div class="legend-scale">
+            <div class="legend-bar"></div>
+            <div class="legend-ticks"><span>10%</span><span>20%</span><span>30%+</span></div>
+          </div>
+          <div class="foot">Color and the number on each pin are read live from the Condition lookup table (Archetype &times; ARPA band &times; Port group), not fixed values. Rows with 0% discount or no matching row (NAD removal flag) are hidden from this map.</div>
+        </div>
+      </details>
+
+      <div class="detail-panel" id="detailPanel"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ===== L2 splitters + the Condition lookup table — fetched live after sign-in
+   from a Google Sheet via an Apps Script Web App (myL2Data action). This file
+   ships with none of that data embedded: it's internal discount-targeting
+   data and this repo is public. See README.md for how the pipeline works
+   (Sheet <- update_l2_sheet.py <- source workbook) and one-time setup. ===== */
+let CONDITIONS = [];
+let DATA = [];
+
+function findCondition(arch, arpaGroup, port, nad){
+  return CONDITIONS.find(c => c.arch===arch && c.arpaGroup===arpaGroup && c.port===port && c.nad===nad);
+}
+
+/* ===== theme handling ===== */
+const root = document.documentElement;
+function effectiveTheme(){
+  const explicit = root.getAttribute('data-theme');
+  if(explicit) return explicit;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+try{
+  const saved = localStorage.getItem('l2map-theme');
+  if(saved==='light' || saved==='dark') root.setAttribute('data-theme', saved);
+}catch(e){}
+
+/* Plain OpenStreetMap raster tiles — free, no key, works from any origin
+   (including GitHub Pages), goes to zoom 19. No free no-key dark OSM tile
+   set exists, so dark mode inverts these same tiles via CSS instead of
+   switching providers (see the .leaflet-tile-pane filter rules above). */
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_MAX_ZOOM = 19;
+
+/* map/tileLayer/districtAreaLayer/pinLayer are only actually constructed
+   inside initApp(), once real data exists to size/populate them with — but
+   every function below is safe to define now, since none of them execute
+   until called (all interaction is blocked behind #loginGate until then). */
+let map, tileLayer, districtAreaLayer, pinLayer;
+
+/* ===== district boundaries — real อำเภอ administrative outlines (Royal Thai
+   Survey Dept / UN OCHA COD-AB Thailand, via data.humdata.org). Public
+   government data, not sensitive, so — same as this project's Route Planner
+   sibling — these stay embedded even though the L2/discount data doesn't. ===== */
+const DISTRICT_BOUNDARIES = {"Bang Bua Thong":{"type":"Polygon","coordinates":[[[100.44910048300011,13.891590915000052],[100.44948930900011,13.884201825000105],[100.44731361000015,13.88251838900004],[100.44899662900019,13.87919167500013],[100.44810378700004,13.875339367000095],[100.44904600300003,13.874381648000167],[100.44823238300006,13.871958449000147],[100.44912367400013,13.871630066000023],[100.44833689900014,13.870640465000122],[100.45042627200013,13.868232178000085],[100.44792779800014,13.867365125000049],[100.44508763500005,13.871046695000189],[100.43889677700014,13.871836332000044],[100.43280380000004,13.869047094],[100.42870252200015,13.86301818700008],[100.42277453100007,13.866456010000036],[100.42281061000011,13.86851200000018],[100.41910471500017,13.869218943000135],[100.42028884800015,13.87024433200014],[100.42013749800009,13.871801568000024],[100.42131271600016,13.87194209300003],[100.42115587500007,13.872959392000098],[100.41929180900019,13.87335731200011],[100.41864509100014,13.876232004000144],[100.41970805500017,13.8769671],[100.41235844600004,13.879524435000121],[100.41227722200006,13.880825989000186],[100.4102961480001,13.882154712000101],[100.40599774900016,13.883059644000184],[100.40484685400003,13.884317022000118],[100.3972258280001,13.887462827000093],[100.39647403900017,13.889358092000123],[100.39704704700011,13.891174613000032],[100.3941506910001,13.89322971700011],[100.38938412800019,13.89535583900016],[100.37714886600014,13.897841183000082],[100.37428525600018,13.902990408999983],[100.37324671600004,13.911290256000086],[100.37194322600004,13.911599960000103],[100.36922835900003,13.911484285000029],[100.36879631800008,13.906866661000095],[100.3636342370001,13.889934117999985],[100.36413702600004,13.882491199000128],[100.36199166100005,13.878713196999968],[100.35733207300018,13.878599336000093],[100.35520945900004,13.882356221000123],[100.3417628900001,13.883369329000118],[100.3414109270002,13.889987387000076],[100.33268840500006,13.911881863000076],[100.3305507450001,13.921530104000169],[100.34101133500019,13.930645387000027],[100.35623821600018,13.949894720000145],[100.35000773700006,13.95387480100004],[100.35497645600003,13.96193755400003],[100.35605212100018,13.975217263000047],[100.35537581900013,13.984950114000014],[100.34964639500004,13.996636058999968],[100.35612955400006,14.000763684000162],[100.36133115900014,13.994314597000084],[100.36523922200013,13.992047828000068],[100.39462669800014,13.985804759000132],[100.39863847400011,13.983371719000104],[100.40324107500015,13.98314619700011],[100.40907743000014,13.985235969000144],[100.41407528100007,13.984563912000056],[100.41944425899999,13.98104008100006],[100.41996202400014,13.9787782840001],[100.42272967400015,13.97740630300018],[100.42684605500011,13.973088010000026],[100.42844957300014,13.969863807000138],[100.43068803000011,13.968900689],[100.43565660700011,13.963691019000066],[100.43797072900009,13.959425353000086],[100.44593706400008,13.952121011000088],[100.44580787400008,13.951297858000089],[100.45076997000012,13.94820221000009],[100.44203543300011,13.932043988000032],[100.44431230800012,13.930906393000157],[100.44158654900014,13.924625670000182],[100.44132454200019,13.920603310000047],[100.44584417500016,13.919935206000048],[100.43934527400006,13.899410289000059],[100.4442358010001,13.897845653000104],[100.44785001000008,13.897937541999966],[100.44910048300011,13.891590915000052]]]},"Sai Noi":{"type":"Polygon","coordinates":[[[100.33102436300004,13.918466175000049],[100.33462277400014,13.906293436000169],[100.3414109270002,13.889987387000076],[100.3417628900001,13.883369329000118],[100.33506287700004,13.883122782000044],[100.33501711600007,13.881431098000064],[100.33104012500013,13.881548259000112],[100.32793931700007,13.882434476000128],[100.32668260600008,13.88565129],[100.32214279400017,13.884761725000033],[100.3223988690001,13.877365664000138],[100.31138765700013,13.87639631900015],[100.30198478100016,13.878833849000046],[100.29964266400009,13.871904782000058],[100.29681910800008,13.869552457000168],[100.27612257700014,13.912939906000133],[100.27328461100012,13.915901944999973],[100.26544878200008,13.920607142],[100.27309634300019,13.932925326000145],[100.28626218,13.946299378000049],[100.29821991900008,13.963371049000102],[100.28626141900003,13.97135897100003],[100.27500920200009,13.981863929000042],[100.27039378600017,13.987582628999974],[100.26773482700014,13.993965448999973],[100.26242900800014,13.99812071100007],[100.26558179900019,14.001208043000076],[100.26328989400014,14.004354847000059],[100.26650495300015,14.007957476000115],[100.2640663210002,14.010168096000086],[100.26912364500015,14.018907233999983],[100.26969787000013,14.023421993000056],[100.27695656100019,14.024089279000066],[100.26894857600013,14.036544455000126],[100.26416128900007,14.060159499000065],[100.27228966500007,14.068161779000093],[100.27196986600018,14.072297068000069],[100.27395141000017,14.073843558000135],[100.27597274300018,14.079559906000043],[100.27710665600011,14.101211371000147],[100.28372984300017,14.100698103000127],[100.28178118400018,14.127013465000175],[100.29606270400018,14.139312669000162],[100.29815951600011,14.140205876000039],[100.3011002630002,14.139799175000064],[100.32084020400004,14.129635987000086],[100.33314749200014,14.12893164000019],[100.34049259000017,14.12140077100014],[100.34410206200005,14.114787454000123],[100.34066084600005,14.093835017000174],[100.33498712200009,14.078261528999974],[100.33241190500007,14.066887020000081],[100.33162925699997,14.056427260000078],[100.33667731000014,14.037664127000028],[100.34427547100006,14.02090803599998],[100.35576105900003,14.000445546000151],[100.34964639500004,13.996636058999968],[100.35537581900013,13.984950114000014],[100.35605212100018,13.975217263000047],[100.35497645600003,13.96193755400003],[100.35000773700006,13.95387480100004],[100.35623821600018,13.949894720000145],[100.34101133500019,13.930645387000027],[100.3305507450001,13.921530104000169],[100.33102436300004,13.918466175000049]]]},"Pak Kret":{"type":"Polygon","coordinates":[[[100.49037630300006,13.894244293000042],[100.48468860300017,13.885474996000028],[100.4799244300001,13.88825909700006],[100.47701205700008,13.891441918000055],[100.47434590199998,13.892160136000143],[100.47120518700012,13.891541761000042],[100.466272571,13.892870667000068],[100.46308148200006,13.892608074000066],[100.45870131400017,13.890303956000025],[100.44963300400019,13.889118015000065],[100.44785001000008,13.897937541999966],[100.4442358010001,13.897845653000104],[100.43934527400006,13.899410289000059],[100.44584417500016,13.919935206000048],[100.44132454200019,13.920603310000047],[100.44158654900014,13.924625670000182],[100.44431230800012,13.930906393000157],[100.44203543300011,13.932043988000032],[100.45076997000012,13.94820221000009],[100.44580787400008,13.951297858000089],[100.44593706400008,13.952121011000088],[100.43797072900009,13.959425353000086],[100.43566784600006,13.963678732000062],[100.43068803000011,13.968900689],[100.42846148100006,13.969850987000143],[100.42701694700008,13.972900136000078],[100.42272967400015,13.97740630300018],[100.41998628300007,13.97875292600014],[100.4196171270001,13.980832937000173],[100.41676133400017,13.983226147000153],[100.40964613500006,13.98523808200008],[100.40324107500015,13.98314619700011],[100.39863847400011,13.983371719000104],[100.39466185100014,13.98579474000013],[100.38049918000007,13.988812153000083],[100.38108060700011,13.994775593000043],[100.43478932400018,13.981151313000055],[100.45347629700012,13.967342546000168],[100.45661667200017,13.97082388300015],[100.45680198500014,13.974939482000082],[100.45792789500007,13.977517345000138],[100.45839197400016,13.97626896000014],[100.4606124840002,13.976448684000047],[100.46241655100016,13.970694653000123],[100.4648833290002,13.971420494000029],[100.46548102400016,13.970293370000036],[100.4669445720001,13.970493063000163],[100.46693108900013,13.968707405000032],[100.48623542500007,13.95012755600004],[100.48859645900006,13.946083016999978],[100.48744699500014,13.944844191000186],[100.48912565600006,13.942675390000034],[100.49144561900005,13.940900820000138],[100.49785022100008,13.939074628000185],[100.50018543500005,13.936982177000175],[100.50178209800009,13.936718788000121],[100.50457148500004,13.940604276999977],[100.50964805600006,13.94343515300011],[100.525787902,13.943629395000187],[100.53152072000006,13.945224031000123],[100.53706331000018,13.949890756000173],[100.53902738900007,13.955698917000177],[100.54204516400006,13.955478970000172],[100.54140587100005,13.95463304599997],[100.54202058400017,13.953578428000128],[100.54404924800019,13.954413181000177],[100.54452506600012,13.952933847000168],[100.55333780900014,13.951387718000035],[100.55417665300013,13.95037965900002],[100.55482076100014,13.951562705000072],[100.55711072200012,13.949833012],[100.56007828600019,13.950674485000093],[100.56161613700016,13.949380860000076],[100.56754835800007,13.951203277000161],[100.5502851820001,13.877585603000114],[100.54879741400009,13.877885983000112],[100.54651377400018,13.880279493000103],[100.50523248900004,13.89131874700007],[100.50087814300014,13.894271335000155],[100.49730918400019,13.895168957000124],[100.49037630300006,13.894244293000042]]]}};
+const DISTRICT_COLORS = { 'Sai Noi': '#e0453c', 'Pak Kret': '#2f6fed', 'Bang Bua Thong': '#1ea672' };
+
+function renderDistrictAreas(){
+  districtAreaLayer.clearLayers();
+  Object.keys(DISTRICT_BOUNDARIES).forEach(name=>{
+    const color = DISTRICT_COLORS[name];
+    const isSelected = state.dist==='all' || state.dist===name;
+    const style = {
+      color, weight: isSelected?2.5:1.5, dashArray:'8 6', lineJoin:'round', lineCap:'round',
+      fillColor: color, fillOpacity: isSelected?0.05:0.02, opacity: isSelected?0.85:0.3
+    };
+    const gj = L.geoJSON({type:'Feature', geometry:DISTRICT_BOUNDARIES[name], properties:{}}, {
+      style: ()=>style, interactive:false
+    }).addTo(districtAreaLayer);
+    const c = gj.getBounds().getCenter();
+    L.marker(c, {
+      icon: L.divIcon({ html:`<span class="district-label" style="color:${color};">${name}</span>`, className:'district-label-outer', iconSize:[0,0] }),
+      interactive:false, keyboard:false
+    }).addTo(districtAreaLayer);
+  });
+}
+
+/* appInitialized guards applyTheme (wired below, reachable from the login
+   card itself) against running its map-refresh half before initApp() has
+   ever created the map/pins — the theme *attribute* still flips instantly
+   either way, so the login card itself responds to the toggle immediately. */
+let appInitialized = false;
+
+function applyTheme(theme){
+  root.setAttribute('data-theme', theme);
+  try{ localStorage.setItem('l2map-theme', theme); }catch(e){}
+  refreshTierEndpoints();
+  if(!appInitialized) return;
+  DATA.forEach(d=> d.marker.setIcon(markerIcon(d, currentLod, d.marker===selectedMarker)));
+  render();
+}
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  applyTheme(effectiveTheme()==='dark' ? 'light' : 'dark');
+});
+
+/* ===== pins (no clustering — every L2 gets its own pin, always) =====
+   Pin color is a genuine function of each L2's own discPct (10%-30%, the full
+   nonzero range found anywhere in the Condition table), interpolated live
+   between the --tier-lo/--tier-hi theme tokens — not a fixed per-value class. */
+const DISC_DOMAIN = [10, 30];
+
+function hexToRgb(hex){
+  const m = hex.trim().replace('#','');
+  return { r: parseInt(m.substr(0,2),16), g: parseInt(m.substr(2,2),16), b: parseInt(m.substr(4,2),16) };
+}
+function mixHex(hexA, hexB, t){
+  const a=hexToRgb(hexA), b=hexToRgb(hexB);
+  const r=Math.round(a.r+(b.r-a.r)*t), g=Math.round(a.g+(b.g-a.g)*t), bl=Math.round(a.b+(b.b-a.b)*t);
+  return `rgb(${r},${g},${bl})`;
+}
+/* getComputedStyle() is expensive — read the gradient endpoints from CSS once
+   (at load, and again on theme toggle) rather than on every pin/list-row. */
+let tierEndpoints = null;
+function refreshTierEndpoints(){
+  const cs = getComputedStyle(root);
+  tierEndpoints = {
+    lo: cs.getPropertyValue('--tier-lo').trim(),
+    hi: cs.getPropertyValue('--tier-hi').trim(),
+    loInk: cs.getPropertyValue('--tier-lo-ink').trim(),
+    hiInk: cs.getPropertyValue('--tier-hi-ink').trim()
+  };
+}
+refreshTierEndpoints();
+
+function tierColors(discPct100){
+  const t = Math.min(1, Math.max(0, (discPct100 - DISC_DOMAIN[0]) / (DISC_DOMAIN[1] - DISC_DOMAIN[0])));
+  return { bg: mixHex(tierEndpoints.lo, tierEndpoints.hi, t), ink: t < 0.55 ? tierEndpoints.loInk : tierEndpoints.hiInk };
+}
+
+function pinIconDetailed(discPct100, selected){
+  const c = tierColors(discPct100);
+  return L.divIcon({
+    html: `<div class="pin-wrap${selected?' selected':''}">
+             <div class="pin-body" style="background:${c.bg};"></div>
+             <div class="pin-text" style="color:${c.ink};">${Math.round(discPct100)}%</div>
+           </div>`,
+    className: 'pin-wrap-outer',
+    iconSize: [30,40],
+    iconAnchor: [15,40],
+    popupAnchor: [0,-36]
+  });
+}
+/* Cheap fallback shape (no rotate, no box-shadow — the two priciest things to
+   paint hundreds of at once) used whenever a lot of pins share the viewport;
+   swaps back to the full teardrop pin once panning/zooming narrows it down. */
+function pinIconSimple(discPct100){
+  const c = tierColors(discPct100);
+  return L.divIcon({
+    html: `<div class="pin-simple" style="background:${c.bg};color:${c.ink};">${Math.round(discPct100)}%</div>`,
+    className: 'pin-simple-outer',
+    iconSize: [20,20],
+    iconAnchor: [10,10]
+  });
+}
+function markerIcon(d, simple, selected){
+  return (selected || !simple) ? pinIconDetailed(d.cond.discPct*100, selected) : pinIconSimple(d.cond.discPct*100);
+}
+
+/* ===== filtering / state ===== */
+const state = { arch:'all', dist:'all', port:'all', q:'', sort:'disc', selected:-1 };
+let selectedMarker = null;
+
+function matches(d){
+  if(state.arch!=='all' && d.arch!==state.arch) return false;
+  if(state.dist!=='all' && d.adm2!==state.dist) return false;
+  if(state.port!=='all' && d.port!==state.port) return false;
+  if(state.q){
+    const q=state.q.toLowerCase();
+    const inVillage = d.village && d.village.toLowerCase().includes(q);
+    if(!d.id.toLowerCase().includes(q) && !d.hpb.toLowerCase().includes(q) && !inVillage) return false;
+  }
+  return true;
+}
+
+function sortedFiltered(){
+  const idx = [];
+  DATA.forEach((d,i)=>{ if(matches(d)) idx.push(i); });
+  idx.sort((a,b)=>{
+    const da=DATA[a], db=DATA[b];
+    if(state.sort==='disc') return db.cond.discPct - da.cond.discPct || db.arpa-da.arpa;
+    if(state.sort==='arpa') return db.arpa - da.arpa;
+    if(state.sort==='dist') return da.adm2.localeCompare(db.adm2) || da.adm3.localeCompare(db.adm3);
+    return 0;
+  });
+  return idx;
+}
+
+const portLabel = p => p==='01_High ≥40%' ? 'High port ≥40%' : 'Low port <40%';
+const arpaGroupLabel = g => g.replace(/^\d+_/, '').replace(/_/g, ' ');
+
+/* Village name is the human-readable handle for an L2 — lead with it wherever
+   we have one, falling back to the subdistrict, which is still a real
+   place, never to the raw L2 code. */
+function locationLabel(d){
+  return {
+    primary: d.village || d.adm3,
+    secondary: d.village ? `${d.adm3}, ${d.adm2}` : d.adm2
+  };
+}
+
+/* Only pins inside the current viewport (+ a buffer) are ever added to the
+   map — keeping off-screen ones out of the DOM is what keeps panning/zooming
+   smooth. The sidebar list is unaffected; it always reflects the full
+   filtered set regardless of what's in view. */
+let currentFilteredIdx = [];
+
+/* Diffs old vs. new visible sets on every moveend and only touches markers
+   actually entering/leaving (rather than clearing + rebuilding everything in
+   view every time). Also switches every visible pin to a cheaper, unrotated
+   shape once there are a lot of them on screen at once, and back to the full
+   pin once panning/zooming narrows the view down. */
+let visiblePinSet = new Set();
+let currentLod = false;
+const LOD_SIMPLE_THRESHOLD = 180;
+
+function updateVisiblePins(){
+  const viewBounds = map.getBounds().pad(0.3);
+  const newVisible = currentFilteredIdx.filter(i=> viewBounds.contains([DATA[i].lat, DATA[i].lon]));
+  const newSet = new Set(newVisible);
+  const simple = newVisible.length > LOD_SIMPLE_THRESHOLD;
+  const lodChanged = simple !== currentLod;
+  currentLod = simple;
+
+  visiblePinSet.forEach(i=>{
+    if(!newSet.has(i)) pinLayer.removeLayer(DATA[i].marker);
+  });
+  newVisible.forEach(i=>{
+    const d = DATA[i];
+    const wasVisible = visiblePinSet.has(i);
+    if(lodChanged || !wasVisible) d.marker.setIcon(markerIcon(d, simple, i===state.selected));
+    if(!wasVisible) pinLayer.addLayer(d.marker);
+  });
+  visiblePinSet = newSet;
+}
+
+function render(){
+  const idx = sortedFiltered();
+  currentFilteredIdx = idx;
+
+  document.getElementById('statShown').textContent = idx.length.toLocaleString('en-US');
+  document.getElementById('listCount').textContent = idx.length.toLocaleString('en-US');
+
+  updateVisiblePins();
+  renderDistrictAreas();
+
+  const listEl = document.getElementById('stopList');
+  if(idx.length===0){
+    listEl.innerHTML = `<div class="empty-note">No L2 splitters match these filters.<br>Try clearing the search or filters.</div>`;
+  } else {
+    const rows = idx.map(i=>{
+      const d = DATA[i];
+      const sel = i===state.selected ? ' selected':'';
+      const villageLine = d.village ? `<div class="stop-village" title="${d.village}">${d.village}</div>` : '';
+      return `<div class="stop-row${sel}" data-idx="${i}">
+        <span class="stop-dot" style="background:${tierColors(d.cond.discPct*100).bg};"></span>
+        <div class="stop-main">
+          <div class="stop-id mono">${d.id}</div>
+          ${villageLine}
+          <div class="stop-loc">${d.adm3}, ${d.adm2} &middot; ${d.arch}</div>
+        </div>
+        <div class="stop-meta">
+          <div class="stop-disc tnum">${Math.round(d.cond.discPct*100)}%</div>
+          <div class="stop-arpa tnum">฿${d.arpa} ARPA</div>
+        </div>
+      </div>`;
+    });
+    listEl.innerHTML = rows.join('');
+  }
+}
+
+function clearSelectedIcon(){
+  if(selectedMarker){
+    const d = DATA[selectedMarker.l2idx];
+    selectedMarker.setIcon(markerIcon(d, currentLod, false));
+    selectedMarker = null;
+  }
+}
+
+function selectStop(i){
+  if(state.selected === i){
+    closeDetail();
+    return;
+  }
+  state.selected = i;
+  const d = DATA[i];
+
+  clearSelectedIcon();
+  d.marker.setIcon(markerIcon(d, currentLod, true));
+  selectedMarker = d.marker;
+
+  document.querySelectorAll('.stop-row').forEach(r=>r.classList.toggle('selected', +r.dataset.idx===i));
+  const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
+  if(row) row.scrollIntoView({block:'nearest'});
+
+  map.flyTo([d.lat, d.lon], Math.max(map.getZoom(), 15), {duration:0.5});
+  openDetail(d);
+}
+
+function openDetail(d){
+  const cond = d.cond;
+  const panelEl = document.getElementById('detailPanel');
+  const archClass = d.arch==='Attack' ? '' : 'alt';
+  const rows = cond.mkts.map((m,i)=>`
+    <tr>
+      <td class="num tnum">MKT-${i+1}</td>
+      <td class="mkt">${m.code}</td>
+      <td class="desc">${m.desc}</td>
+      <td class="pct num tnum">${Math.round(m.disc*100)}%</td>
+      <td class="normal num tnum">${Math.round(m.normal)}</td>
+      <td class="special num tnum">${Math.round(m.special)}</td>
+    </tr>`).join('');
+
+  panelEl.innerHTML = `
+    <div class="detail-head">
+      <div>
+        ${d.village ? `<div class="detail-village">${d.village}</div>` : ''}
+        <div class="detail-id">${d.id}</div>
+        <div class="detail-loc">${d.adm3}, ${d.adm2} &middot; Nonthaburi</div>
+      </div>
+      <button class="detail-close" id="detailCloseBtn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="detail-body">
+      <a class="gmaps-btn" href="https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lon}" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 5.5-8 12-8 12s-8-6.5-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.6"/></svg>
+        Open in Google Maps
+        <svg class="ext" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+      <div class="stat-grid">
+        <div class="stat-tile ${archClass}"><div class="lbl">Archetype</div><div class="val">${d.arch}</div></div>
+        <div class="stat-tile"><div class="lbl">Predicted ARPA</div><div class="val tnum">฿${d.arpa}</div></div>
+        <div class="stat-tile ${archClass}"><div class="lbl">Port group</div><div class="val">${portLabel(d.port)}</div></div>
+        <div class="stat-tile"><div class="lbl">HPB No.</div><div class="val mono">${d.hpb}</div></div>
+      </div>
+      <div class="promo-head">
+        <h3>Eligible packages</h3>
+        <span class="badge">${Math.round(cond.discPct*100)}% off</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="promo-table">
+          <thead><tr>
+            <th>No.</th><th>MKT code</th><th>Package</th>
+            <th class="num">%off</th><th class="num">Normal</th><th class="num">Special</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="detail-foot">Prices in THB/month, 24-month contract. Looked up from the Condition sheet by Archetype (${d.arch}) &times; ARPA band (${arpaGroupLabel(d.arpaGroup)}) &times; Port group (${portLabel(d.port)}). Synced live from a Google Sheet — see the repo README.</div>
+    </div>`;
+  panelEl.classList.add('open');
+  document.getElementById('detailCloseBtn').onclick = closeDetail;
+}
+function closeDetail(){
+  document.getElementById('detailPanel').classList.remove('open');
+  state.selected=-1;
+  clearSelectedIcon();
+  document.querySelectorAll('.stop-row.selected').forEach(r=>r.classList.remove('selected'));
+}
+
+/* ===== init — runs once, after a successful sign-in fetch has populated
+   DATA/CONDITIONS. Everything above this point only defines functions; this
+   is the first thing that actually touches the map or the DOM data lives in. ===== */
+function initApp(){
+  DATA.forEach(d=>{ d.cond = findCondition(d.arch, d.arpaGroup, d.port, d.nad); });
+  document.getElementById('statTotal').textContent = DATA.length.toLocaleString('en-US');
+
+  const bounds = L.latLngBounds(DATA.map(d=>[d.lat, d.lon]));
+  map = L.map('map', { zoomControl:false, preferCanvas:true, maxZoom: TILE_MAX_ZOOM }).fitBounds(bounds, {padding:[40,40]});
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  tileLayer = L.tileLayer(TILE_URL, {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: TILE_MAX_ZOOM
+  }).addTo(map);
+  districtAreaLayer = L.layerGroup().addTo(map);
+  pinLayer = L.layerGroup().addTo(map);
+
+  DATA.forEach((d,i)=>{
+    const marker = L.marker([d.lat, d.lon], { icon: pinIconDetailed(d.cond.discPct*100, false) });
+    marker.l2idx = i;
+    marker.bindTooltip(locationLabel(d).primary, { direction:'top', offset:[0,-32], className:'l2-tooltip' });
+    marker.on('click', ()=> selectStop(i));
+    d.marker = marker;
+  });
+
+  map.on('moveend', updateVisiblePins);
+
+  document.getElementById('stopList').addEventListener('click',(e)=>{
+    const row = e.target.closest('.stop-row');
+    if(!row) return;
+    selectStop(+row.dataset.idx);
+  });
+  document.getElementById('archSeg').addEventListener('click',(e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    document.querySelectorAll('#archSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.arch = btn.dataset.v;
+    render();
+  });
+  document.getElementById('distSelect').addEventListener('change',(e)=>{ state.dist=e.target.value; render(); });
+  document.getElementById('portSelect').addEventListener('change',(e)=>{ state.port=e.target.value; render(); });
+  document.getElementById('sortSelect').addEventListener('change',(e)=>{ state.sort=e.target.value; render(); });
+  let searchT;
+  document.getElementById('searchInput').addEventListener('input',(e)=>{
+    clearTimeout(searchT);
+    searchT=setTimeout(()=>{ state.q=e.target.value.trim(); render(); },150);
+  });
+
+  render();
+  appInitialized = true;
+}
+
+/* ===== Google Sign-In =====
+   Fill these in once you've completed the Google Cloud / Apps Script setup
+   in README.md — the page won't work (and says so) until you do. */
+const GOOGLE_CLIENT_ID = "REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com";
+const DEFAULT_SYNC_URL = "REPLACE_WITH_YOUR_APPS_SCRIPT_WEB_APP_URL";
+
+function showLoginStatus(html, isError){
+  const el = document.getElementById('loginStatus');
+  el.innerHTML = html;
+  el.style.display = 'block';
+  el.classList.toggle('error', !!isError);
+}
+
+async function onGoogleSignIn(response){
+  const idToken = response.credential;
+  document.getElementById('gsiButton').style.display = 'none';
+  showLoginStatus('<div class="login-spinner"></div>', false);
+  try{
+    const res = await fetch(DEFAULT_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'myL2Data', idToken }),
+    });
+    const data = await res.json();
+    if(!data.ok){
+      document.getElementById('gsiButton').style.display = 'flex';
+      showLoginStatus(
+        data.message || ('Sign-in failed: ' + (data.error || 'unknown error')),
+        true,
+      );
+      return;
+    }
+    DATA = data.points || [];
+    CONDITIONS = data.conditions || [];
+    document.getElementById('loginGate').style.display = 'none';
+    initApp();
+  }catch(e){
+    document.getElementById('gsiButton').style.display = 'flex';
+    showLoginStatus('Could not reach the server. Check your connection and try again.', true);
+    console.warn('myL2Data fetch failed', e);
+  }
+}
+
+window.addEventListener('load', ()=>{
+  if(GOOGLE_CLIENT_ID.indexOf('REPLACE_WITH')===0){
+    showLoginStatus('This page isn’t configured yet — GOOGLE_CLIENT_ID needs to be set. See the repo README.', true);
+    return;
+  }
+  if(!(window.google && google.accounts && google.accounts.id)){
+    showLoginStatus('Could not load Google Sign-In. Check your connection and reload.', true);
+    return;
+  }
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogleSignIn });
+  google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large' });
+});
+</script>
+</body>
+</html>
