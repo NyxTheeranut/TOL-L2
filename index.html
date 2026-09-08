@@ -50,7 +50,7 @@
     --accent-ink:#1a0d07;
     --accent-soft:#3a2018;
     --amber:#f0bd4e;
-    --amber-ink:#2c2005;
+    --amber-ink:#f2cd82;
     --amber-soft:#332608;
     --arch-attack:#ff7a55;
     --arch-replace:#9a9eef;
@@ -74,7 +74,7 @@
   --accent-ink:#1a0d07;
   --accent-soft:#3a2018;
   --amber:#f0bd4e;
-  --amber-ink:#2c2005;
+  --amber-ink:#f2cd82;
   --amber-soft:#332608;
   --arch-attack:#ff7a55;
   --arch-replace:#9a9eef;
@@ -125,7 +125,7 @@ body{
 @media (prefers-reduced-motion: reduce){ .login-spinner{animation:none;} }
 
 /* ---------- App shell ---------- */
-.app{display:flex;flex-direction:column;height:100vh;}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
 
 .topbar{
   display:flex;align-items:center;gap:14px;
@@ -157,6 +157,17 @@ body{
 }
 .topbar-search input:focus{border-color:var(--accent);}
 .topbar-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.55;}
+/* Same search box, shown here instead of the topbar once the topbar has no
+   room for it (see the mobile breakpoint below) — one input either way,
+   never both at once, so there's nothing to keep in sync. */
+.sidebar-search{display:none;position:relative;margin-bottom:12px;}
+.sidebar-search input{
+  width:100%;height:38px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);padding:0 14px 0 36px;
+  font:inherit;font-size:13.5px;outline:none;
+}
+.sidebar-search input:focus{border-color:var(--accent);}
+.sidebar-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.55;}
 .topbar-spacer{flex:1;}
 .topbar-stat{
   display:flex;align-items:baseline;gap:6px;
@@ -395,10 +406,56 @@ table.promo-table td.special{font-weight:700;}
 .stop-list::-webkit-scrollbar, .detail-body::-webkit-scrollbar{width:8px;}
 .stop-list::-webkit-scrollbar-thumb, .detail-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
 
+/* ---------- Mobile tab bar (map/list) ---------- */
+/* Below 640px, sidebar-next-to-map simply doesn't fit — a 352px sidebar
+   alone is wider than most phones. Below that width the two panes become
+   full-screen, mutually exclusive views, switched with this floating bar
+   instead of shown side by side. Hidden entirely above that width, where
+   both panes already fit together fine. */
+.mobile-tabbar{
+  display:none;
+  position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+  z-index:1600;
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  box-shadow:var(--shadow-md);padding:4px;gap:2px;
+}
+.mobile-tabbar button{
+  display:flex;align-items:center;gap:6px;
+  border:none;background:transparent;color:var(--text-muted);
+  font:inherit;font-size:13px;font-weight:600;padding:10px 20px;border-radius:999px;cursor:pointer;
+}
+.mobile-tabbar button.active{background:var(--accent);color:var(--accent-ink);}
+.mobile-tabbar svg{width:15px;height:15px;}
+
 @media (max-width:860px){
   .sidebar{width:290px;flex-basis:290px;}
   .detail-panel{width:100%;right:8px;left:8px;max-width:none;}
   .topbar-search{display:none;}
+}
+
+@media (max-width:640px){
+  .brand-sub{display:none;}
+  .topbar{padding:0 12px;gap:10px;}
+  /* Not shrunk, dropped — the count pill plus the title plus the theme
+     toggle don't fit a phone width even shrunk, and the List view (which a
+     mobile visitor is one tap from) already shows the count. */
+  .topbar-stat{display:none;}
+  .sidebar-search{display:block;}
+
+  .body-row{position:relative;}
+  .sidebar{width:100%;flex-basis:auto;}
+  .sidebar, .map-panel{width:100%;}
+  .body-row.mobile-view-map .sidebar{display:none;}
+  .body-row.mobile-view-list .map-panel{display:none;}
+
+  .mobile-tabbar{display:flex;}
+  .map-legend{bottom:78px;max-width:calc(100% - 32px);}
+  .detail-panel{bottom:78px;}
+  .leaflet-bottom.leaflet-right{margin-bottom:78px;}
+
+  .segmented button{padding:11px 6px;}
+  .select-row select{height:40px;}
+  .stop-row{padding:12px 8px;}
 }
 </style>
 </head>
@@ -446,9 +503,13 @@ table.promo-table td.special{font-weight:700;}
     </button>
   </div>
 
-  <div class="body-row">
+  <div class="body-row mobile-view-map" id="bodyRow">
     <div class="sidebar">
       <div class="sidebar-section">
+        <div class="sidebar-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="searchInputMobile" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
+        </div>
         <div class="filter-label">Archetype</div>
         <div class="segmented" id="archSeg">
           <button data-v="all" class="active">All</button>
@@ -496,6 +557,17 @@ table.promo-table td.special{font-weight:700;}
 
       <div class="detail-panel" id="detailPanel"></div>
     </div>
+  </div>
+
+  <div class="mobile-tabbar" id="mobileTabbar">
+    <button data-view="map" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3zM9 7v13M15 4v13"/></svg>
+      Map
+    </button>
+    <button data-view="list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      List
+    </button>
   </div>
 </div>
 
@@ -782,6 +854,7 @@ function selectStop(i){
   const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
   if(row) row.scrollIntoView({block:'nearest'});
 
+  setMobileView('map'); // picking a stop from the List view (mobile) should show it, not stay on the list
   map.flyTo([d.lat, d.lon], Math.max(map.getZoom(), 15), {duration:0.5});
   openDetail(d);
 }
@@ -851,6 +924,26 @@ function closeDetail(){
 /* ===== init — runs once, after a successful sign-in fetch has populated
    DATA/CONDITIONS. Everything above this point only defines functions; this
    is the first thing that actually touches the map or the DOM data lives in. ===== */
+/* Map and List are two full-screen, mutually exclusive views below 640px
+   (see the mobile breakpoint in <style>) — this just toggles which one's
+   showing. Leaflet caches its container size, so switching back to Map
+   after it sat display:none needs an explicit re-measure or it renders
+   blank/mis-sized until the next manual pan/zoom. */
+function setMobileView(view){
+  const bodyRow = document.getElementById('bodyRow');
+  const returningToMap = view==='map' && bodyRow.classList.contains('mobile-view-list');
+  bodyRow.classList.toggle('mobile-view-list', view==='list');
+  bodyRow.classList.toggle('mobile-view-map', view==='map');
+  document.querySelectorAll('#mobileTabbar button').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
+  if(returningToMap && map) setTimeout(()=> map.invalidateSize(), 0);
+}
+
+/* Less to look at on first paint on a small screen — still one tap to open. */
+if(window.matchMedia('(max-width:640px)').matches){
+  const legend = document.querySelector('.map-legend');
+  if(legend) legend.removeAttribute('open');
+}
+
 function initApp(){
   DATA.forEach(d=>{ d.cond = findCondition(d.arch, d.arpaGroup, d.port, d.nad); });
   document.getElementById('statTotal').textContent = DATA.length.toLocaleString('en-US');
@@ -891,9 +984,18 @@ function initApp(){
   document.getElementById('portSelect').addEventListener('change',(e)=>{ state.port=e.target.value; render(); });
   document.getElementById('sortSelect').addEventListener('change',(e)=>{ state.sort=e.target.value; render(); });
   let searchT;
-  document.getElementById('searchInput').addEventListener('input',(e)=>{
-    clearTimeout(searchT);
-    searchT=setTimeout(()=>{ state.q=e.target.value.trim(); render(); },150);
+  const searchBoxes = [document.getElementById('searchInput'), document.getElementById('searchInputMobile')];
+  searchBoxes.forEach(box=>{
+    box.addEventListener('input',(e)=>{
+      searchBoxes.forEach(other=>{ if(other!==e.target) other.value = e.target.value; });
+      clearTimeout(searchT);
+      searchT=setTimeout(()=>{ state.q=e.target.value.trim(); render(); },150);
+    });
+  });
+
+  document.getElementById('mobileTabbar').addEventListener('click',(e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    setMobileView(btn.dataset.view);
   });
 
   render();
