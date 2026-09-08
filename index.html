@@ -771,8 +771,10 @@ function markerIcon(d, simple, selected){
    click/tooltip all keep working exactly as Leaflet already handles them)
    and only adds one thing on top: the discount-% text, drawn straight into
    the same canvas pass. Desktop keeps the nicer divIcon teardrop pin above
-   (its performance was never the complaint) — this path is IS_TOUCH-only. */
-const canvasRenderer = IS_TOUCH ? L.canvas({ padding: 0.4 }) : null;
+   (its performance was never the complaint) — this path is IS_TOUCH-only.
+   canvasRenderer itself is created inside initApp(), once map exists (see
+   there for why -- it needs its own pane, above the district boundaries'). */
+let canvasRenderer = null;
 const PinMarker = IS_TOUCH ? L.CircleMarker.extend({
   _updatePath: function(){
     L.CircleMarker.prototype._updatePath.call(this);
@@ -1197,6 +1199,20 @@ function initApp(){
   }).addTo(map);
   districtAreaLayer = L.layerGroup().addTo(map);
   pinLayer = L.layerGroup().addTo(map);
+
+  if(IS_TOUCH){
+    // District boundaries (renderDistrictAreas, above) are also canvas-
+    // rendered (preferCanvas:true), in Leaflet's default overlayPane. Pins
+    // need their OWN canvas in a pane stacked ABOVE that one -- two canvases
+    // covering the same area are opaque to clicks regardless of what's
+    // actually drawn on them, and the later-added one (the district
+    // boundaries, added every render()) was silently swallowing every tap
+    // meant for a pin. Desktop never hits this: its pins are DOM markers in
+    // Leaflet's markerPane, which already sits above overlayPane by design.
+    map.createPane('pinCanvasPane');
+    map.getPane('pinCanvasPane').style.zIndex = 610;
+    canvasRenderer = L.canvas({ padding: 0.4, pane: 'pinCanvasPane' });
+  }
 
   DATA.forEach((d,i)=>{
     const marker = IS_TOUCH
