@@ -246,13 +246,6 @@ body{
 /* ---------- Map ---------- */
 .map-panel{flex:1;position:relative;overflow:hidden;background:var(--bg);}
 #map{position:absolute;inset:0;background:var(--bg);}
-/* There's no free no-key dark OSM tile set, so dark mode inverts the same
-   light tiles instead of switching providers — hue-rotate corrects the
-   colors invert() flips (e.g. water going orange). */
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) #map .leaflet-tile-pane{ filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
-}
-:root[data-theme="dark"] #map .leaflet-tile-pane{ filter:invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
 .leaflet-control-attribution{
   background:var(--surface) !important;color:var(--text-faint) !important;
   font-family:"Kanit",sans-serif !important; font-size:10px !important;
@@ -597,12 +590,22 @@ try{
   if(saved==='light' || saved==='dark') root.setAttribute('data-theme', saved);
 }catch(e){}
 
-/* Plain OpenStreetMap raster tiles — free, no key, works from any origin
-   (including GitHub Pages), goes to zoom 19. No free no-key dark OSM tile
-   set exists, so dark mode inverts these same tiles via CSS instead of
-   switching providers (see the .leaflet-tile-pane filter rules above). */
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_MAX_ZOOM = 19;
+/* Two real tile sets, not one set with a CSS filter for dark mode — an
+   invert()/hue-rotate() filter over live-panning tiles turned out to be
+   genuinely brutal on phone GPUs (fine on desktop, laggy enough on mobile
+   to be the whole complaint). Esri's gray-canvas basemap is free/no-key
+   and has a real dark variant, at the cost of a lower native zoom (16 vs.
+   OSM's 19) — a trade worth making for smooth panning on a phone. */
+const TILE_CONFIG = {
+  light: { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom:19,
+           attribution:'&copy; OpenStreetMap contributors' },
+  dark:  { url:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', maxZoom:16,
+           attribution:'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ' }
+};
+/* Rotated + drop-shadowed pins are noticeably heavier to paint than the
+   plain-circle fallback — fine in bulk on a desktop GPU, not on a phone's,
+   so touch devices switch to the cheap shape at a much lower pin count. */
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 /* map/tileLayer/districtAreaLayer/pinLayer are only actually constructed
    inside initApp(), once real data exists to size/populate them with — but
@@ -648,6 +651,11 @@ function applyTheme(theme){
   try{ localStorage.setItem('l2map-theme', theme); }catch(e){}
   refreshTierEndpoints();
   if(!appInitialized) return;
+  const cfg = TILE_CONFIG[theme];
+  map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(cfg.url, { attribution:cfg.attribution, maxZoom:cfg.maxZoom }).addTo(map);
+  map.setMaxZoom(cfg.maxZoom);
+  if(map.getZoom() > cfg.maxZoom) map.setZoom(cfg.maxZoom);
   DATA.forEach(d=> d.marker.setIcon(markerIcon(d, currentLod, d.marker===selectedMarker)));
   render();
 }
@@ -773,7 +781,7 @@ let currentFilteredIdx = [];
    pin once panning/zooming narrows the view down. */
 let visiblePinSet = new Set();
 let currentLod = false;
-const LOD_SIMPLE_THRESHOLD = 180;
+const LOD_SIMPLE_THRESHOLD = IS_TOUCH ? 60 : 180;
 
 function updateVisiblePins(){
   const viewBounds = map.getBounds().pad(0.3);
@@ -935,7 +943,13 @@ function setMobileView(view){
   bodyRow.classList.toggle('mobile-view-list', view==='list');
   bodyRow.classList.toggle('mobile-view-map', view==='map');
   document.querySelectorAll('#mobileTabbar button').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
-  if(returningToMap && map) setTimeout(()=> map.invalidateSize(), 0);
+  // Synchronous, not setTimeout(0): reading layout right after the display:none
+  // -> flex class swap above forces the browser to lay it out NOW, which is
+  // exactly what makes this safe to call immediately. Deferring it left a
+  // window where flyTo() (called right after this, from selectStop) ran
+  // against the map's stale pre-hidden size and visibly snapped once
+  // invalidateSize() finally landed a tick later.
+  if(returningToMap && map) map.invalidateSize();
 }
 
 /* Less to look at on first paint on a small screen — still one tap to open. */
@@ -949,11 +963,12 @@ function initApp(){
   document.getElementById('statTotal').textContent = DATA.length.toLocaleString('en-US');
 
   const bounds = L.latLngBounds(DATA.map(d=>[d.lat, d.lon]));
-  map = L.map('map', { zoomControl:false, preferCanvas:true, maxZoom: TILE_MAX_ZOOM }).fitBounds(bounds, {padding:[40,40]});
+  const initialCfg = TILE_CONFIG[effectiveTheme()];
+  map = L.map('map', { zoomControl:false, preferCanvas:true, maxZoom: initialCfg.maxZoom }).fitBounds(bounds, {padding:[40,40]});
   L.control.zoom({position:'bottomright'}).addTo(map);
-  tileLayer = L.tileLayer(TILE_URL, {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: TILE_MAX_ZOOM
+  tileLayer = L.tileLayer(initialCfg.url, {
+    attribution: initialCfg.attribution,
+    maxZoom: initialCfg.maxZoom
   }).addTo(map);
   districtAreaLayer = L.layerGroup().addTo(map);
   pinLayer = L.layerGroup().addTo(map);
