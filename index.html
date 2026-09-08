@@ -862,9 +862,28 @@ function selectStop(i){
   const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
   if(row) row.scrollIntoView({block:'nearest'});
 
-  setMobileView('map'); // picking a stop from the List view (mobile) should show it, not stay on the list
-  map.flyTo([d.lat, d.lon], Math.max(map.getZoom(), 15), {duration:0.5});
+  // Content first: cheap, instant, and ready by the time the map panel below
+  // is actually visible (harmless to fill in while its ancestor is still
+  // display:none, per the mobile List view -- nothing paints it yet).
   openDetail(d);
+
+  // Picking a stop from the List view (mobile) should show it, not stay on
+  // the list. Was an animated flyTo() here unconditionally -- fine when the
+  // map was already on screen (a pin tap), but when the map panel had been
+  // display:none a moment ago, that meant an animated transition AND a
+  // resize AND first-time tile loads for the newly-visible viewport all
+  // landing in the same breath, which is what was actually freezing the
+  // page for several seconds on a phone (that jank is also why scroll
+  // gestures and the close button felt broken right after -- a busy main
+  // thread, not separate bugs). Jumping straight there instead skips the
+  // animation entirely for that one case, which is barely visible anyway
+  // since the view was just hidden a moment ago.
+  const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
+  if(setMobileView('map')){
+    map.setView(target, targetZoom, {animate:false});
+  } else {
+    map.flyTo(target, targetZoom, {duration:0.5});
+  }
 }
 
 function openDetail(d){
@@ -937,6 +956,8 @@ function closeDetail(){
    showing. Leaflet caches its container size, so switching back to Map
    after it sat display:none needs an explicit re-measure or it renders
    blank/mis-sized until the next manual pan/zoom. */
+/* Returns whether the map panel just went from hidden to visible, so the
+   caller can treat that transition specially (see selectStop). */
 function setMobileView(view){
   const bodyRow = document.getElementById('bodyRow');
   const returningToMap = view==='map' && bodyRow.classList.contains('mobile-view-list');
@@ -945,11 +966,11 @@ function setMobileView(view){
   document.querySelectorAll('#mobileTabbar button').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
   // Synchronous, not setTimeout(0): reading layout right after the display:none
   // -> flex class swap above forces the browser to lay it out NOW, which is
-  // exactly what makes this safe to call immediately. Deferring it left a
-  // window where flyTo() (called right after this, from selectStop) ran
-  // against the map's stale pre-hidden size and visibly snapped once
-  // invalidateSize() finally landed a tick later.
-  if(returningToMap && map) map.invalidateSize();
+  // exactly what makes this safe to call immediately. pan:false skips
+  // Leaflet's own recentering pass (and the moveend it would fire) -- the
+  // caller is about to explicitly move the view anyway.
+  if(returningToMap && map) map.invalidateSize({pan:false});
+  return returningToMap;
 }
 
 /* Less to look at on first paint on a small screen — still one tap to open. */
