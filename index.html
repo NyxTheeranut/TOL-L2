@@ -729,6 +729,7 @@ function markerIcon(d, simple, selected){
 /* ===== filtering / state ===== */
 const state = { arch:'all', dist:'all', port:'all', q:'', sort:'disc', selected:-1 };
 let selectedMarker = null;
+let selectedRowEl = null;
 
 function matches(d){
   if(state.arch!=='all' && d.arch!==state.arch) return false;
@@ -781,7 +782,7 @@ let currentFilteredIdx = [];
    pin once panning/zooming narrows the view down. */
 let visiblePinSet = new Set();
 let currentLod = false;
-const LOD_SIMPLE_THRESHOLD = IS_TOUCH ? 60 : 180;
+const LOD_SIMPLE_THRESHOLD = IS_TOUCH ? 35 : 180;
 
 function updateVisiblePins(){
   const viewBounds = map.getBounds().pad(0.3);
@@ -836,6 +837,11 @@ function render(){
     });
     listEl.innerHTML = rows.join('');
   }
+  // Rebuilding the list's HTML replaces every row element, including
+  // whichever one selectedRowEl (see selectStop/closeDetail) pointed at --
+  // refresh it so a later deselect still finds the row that's actually on
+  // screen, not the detached one from before this rebuild.
+  selectedRowEl = state.selected>=0 ? document.querySelector(`.stop-row[data-idx="${state.selected}"]`) : null;
 }
 
 function clearSelectedIcon(){
@@ -858,9 +864,14 @@ function selectStop(i){
   d.marker.setIcon(markerIcon(d, currentLod, true));
   selectedMarker = d.marker;
 
-  document.querySelectorAll('.stop-row').forEach(r=>r.classList.toggle('selected', +r.dataset.idx===i));
+  // Was a full querySelectorAll('.stop-row') scan-and-toggle over every row
+  // in the list on every single selection -- fine at a few dozen rows, real,
+  // avoidable cost at the real 1,166-row scale. Track the one selected
+  // element directly instead.
+  if(selectedRowEl) selectedRowEl.classList.remove('selected');
   const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
-  if(row) row.scrollIntoView({block:'nearest'});
+  if(row){ row.classList.add('selected'); row.scrollIntoView({block:'nearest'}); }
+  selectedRowEl = row;
 
   // Content first: cheap, instant, and ready by the time the map panel below
   // is actually visible (harmless to fill in while its ancestor is still
@@ -945,7 +956,7 @@ function closeDetail(){
   document.getElementById('detailPanel').classList.remove('open');
   state.selected=-1;
   clearSelectedIcon();
-  document.querySelectorAll('.stop-row.selected').forEach(r=>r.classList.remove('selected'));
+  if(selectedRowEl){ selectedRowEl.classList.remove('selected'); selectedRowEl = null; }
 }
 
 /* ===== init — runs once, after a successful sign-in fetch has populated
@@ -985,7 +996,15 @@ function initApp(){
 
   const bounds = L.latLngBounds(DATA.map(d=>[d.lat, d.lon]));
   const initialCfg = TILE_CONFIG[effectiveTheme()];
-  map = L.map('map', { zoomControl:false, preferCanvas:true, maxZoom: initialCfg.maxZoom }).fitBounds(bounds, {padding:[40,40]});
+  map = L.map('map', {
+    zoomControl:false, preferCanvas:true, maxZoom: initialCfg.maxZoom,
+    // Leaflet's own zoom/fade/marker transitions are separate from the
+    // flyTo() already fixed above, and cost real GPU compositing time on
+    // weaker phones regardless of which method triggers them. Touch devices
+    // skip all of it -- every view change (pinch, tap-to-select, the zoom
+    // buttons) snaps instead of animates.
+    zoomAnimation: !IS_TOUCH, fadeAnimation: !IS_TOUCH, markerZoomAnimation: !IS_TOUCH,
+  }).fitBounds(bounds, {padding:[40,40], animate:!IS_TOUCH});
   L.control.zoom({position:'bottomright'}).addTo(map);
   tileLayer = L.tileLayer(initialCfg.url, {
     attribution: initialCfg.attribution,
