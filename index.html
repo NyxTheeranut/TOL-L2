@@ -965,49 +965,59 @@ function clearSelectedIcon(){
   }
 }
 
-function selectStop(i){
-  if(state.selected === i){
+/* fromList: true only when called from the sidebar list's click handler
+   (not a pin tap). On touch, that first tap just shows WHERE the stop is —
+   moved to, highlighted — without also opening the detail card in the same
+   breath; the card opens on a second tap, on the now-visible pin itself.
+   Desktop opens it immediately either way, same as a pin tap always does —
+   there's no separate "find it on the map" step to begin with there. */
+function selectStop(i, fromList){
+  const detailEl = document.getElementById('detailPanel');
+  const sameAsSelected = state.selected === i;
+
+  // Tapping the currently-open stop again (pin or list row) closes it.
+  if(sameAsSelected && detailEl.classList.contains('open')){
     closeDetail();
     return;
   }
-  state.selected = i;
+
   const d = DATA[i];
 
-  clearSelectedIcon();
-  refreshMarkerStyle(d.marker, true);
-  selectedMarker = d.marker;
+  if(!sameAsSelected){
+    state.selected = i;
+    clearSelectedIcon();
+    refreshMarkerStyle(d.marker, true);
+    selectedMarker = d.marker;
 
-  // Was a full querySelectorAll('.stop-row') scan-and-toggle over every row
-  // in the list on every single selection -- fine at a few dozen rows, real,
-  // avoidable cost at the real 1,166-row scale. Track the one selected
-  // element directly instead.
-  if(selectedRowEl) selectedRowEl.classList.remove('selected');
-  const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
-  if(row){ row.classList.add('selected'); row.scrollIntoView({block:'nearest'}); }
-  selectedRowEl = row;
+    // Was a full querySelectorAll('.stop-row') scan-and-toggle over every
+    // row in the list on every single selection -- fine at a few dozen
+    // rows, real, avoidable cost at the real 1,166-row scale. Track the one
+    // selected element directly instead.
+    if(selectedRowEl) selectedRowEl.classList.remove('selected');
+    const row = document.querySelector(`.stop-row[data-idx="${i}"]`);
+    if(row){ row.classList.add('selected'); row.scrollIntoView({block:'nearest'}); }
+    selectedRowEl = row;
 
-  // Content first: cheap, instant, and ready by the time the map panel below
-  // is actually visible (harmless to fill in while its ancestor is still
-  // display:none, per the mobile List view -- nothing paints it yet).
-  openDetail(d);
-
-  // Picking a stop from the List view (mobile) should show it, not stay on
-  // the list. Was an animated flyTo() here unconditionally -- fine when the
-  // map was already on screen (a pin tap), but when the map panel had been
-  // display:none a moment ago, that meant an animated transition AND a
-  // resize AND first-time tile loads for the newly-visible viewport all
-  // landing in the same breath, which is what was actually freezing the
-  // page for several seconds on a phone (that jank is also why scroll
-  // gestures and the close button felt broken right after -- a busy main
-  // thread, not separate bugs). Jumping straight there instead skips the
-  // animation entirely for that one case, which is barely visible anyway
-  // since the view was just hidden a moment ago.
-  const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
-  if(setMobileView('map')){
-    map.setView(target, targetZoom, {animate:false});
-  } else {
-    map.flyTo(target, targetZoom, {duration:0.5});
+    // Picking a stop from the List view (mobile) should show it, not stay
+    // on the list. Was an animated flyTo() here unconditionally -- fine
+    // when the map was already on screen (a pin tap), but when the map
+    // panel had been display:none a moment ago, that meant an animated
+    // transition AND a resize AND first-time tile loads for the
+    // newly-visible viewport all landing in the same breath, which is what
+    // was actually freezing the page for several seconds on a phone.
+    // Jumping straight there instead skips the animation entirely for that
+    // one case, which is barely visible anyway since the view was just
+    // hidden a moment ago.
+    const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
+    if(setMobileView('map')){
+      map.setView(target, targetZoom, {animate:false});
+    } else {
+      map.flyTo(target, targetZoom, {duration:0.5});
+    }
   }
+
+  const skipDetailForNow = IS_TOUCH && fromList && !sameAsSelected;
+  if(!skipDetailForNow) openDetail(d);
 }
 
 function openDetail(d){
@@ -1231,7 +1241,7 @@ function initApp(){
   document.getElementById('stopList').addEventListener('click',(e)=>{
     const row = e.target.closest('.stop-row');
     if(!row) return;
-    selectStop(+row.dataset.idx);
+    selectStop(+row.dataset.idx, true);
   });
   document.getElementById('archSeg').addEventListener('click',(e)=>{
     const btn = e.target.closest('button'); if(!btn) return;
