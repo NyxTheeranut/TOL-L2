@@ -222,8 +222,13 @@ body{
 .segmented button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
 .select-row{display:flex;gap:8px;margin-top:9px;}
 .select-row select{
-  flex:1;height:32px;border-radius:7px;border:1px solid var(--border);
+  /* min-width:0 overrides a <select>'s default content-based min-width --
+     without it, flex:1 still lets a long selected option (a full email
+     address, here) push this box wider than its sibling instead of the two
+     splitting the row evenly regardless of content. */
+  flex:1;min-width:0;height:32px;border-radius:7px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text);font:inherit;font-size:12.5px;padding:0 8px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
 .list-summary{
