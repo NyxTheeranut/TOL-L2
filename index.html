@@ -212,6 +212,19 @@ body{
   border-right:1px solid var(--border);
   min-height:0;
 }
+/* Both direct children of .sidebar -- each needs the SAME flex-column +
+   flex:1 + min-height:0 treatment .sidebar itself has, or .stop-list's
+   flex:1/overflow-y:auto below has no flex container to size against, so
+   it grows to its full unbounded row count instead of staying height-
+   bound and internally scrollable -- pushing the whole page taller than
+   the viewport and scrollable past the map/detail panel entirely. */
+#discountSidebar, #feedbackSidebar{
+  display:flex;flex-direction:column;flex:1;min-height:0;
+}
+/* An ID selector outranks the browser's built-in [hidden]{display:none} --
+   without this, the rule above forces display:flex even while the hidden
+   attribute is set, showing both sidebars stacked on top of each other. */
+#discountSidebar[hidden], #feedbackSidebar[hidden]{display:none;}
 .sidebar-section{padding:14px 16px 12px;border-bottom:1px solid var(--border-soft);}
 .filter-label{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:7px;}
 .segmented{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;}
