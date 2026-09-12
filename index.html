@@ -212,19 +212,16 @@ body{
   border-right:1px solid var(--border);
   min-height:0;
 }
-/* Both direct children of .sidebar -- each needs the SAME flex-column +
-   flex:1 + min-height:0 treatment .sidebar itself has, or .stop-list's
-   flex:1/overflow-y:auto below has no flex container to size against, so
-   it grows to its full unbounded row count instead of staying height-
-   bound and internally scrollable -- pushing the whole page taller than
-   the viewport and scrollable past the map/detail panel entirely. */
-#discountSidebar, #feedbackSidebar{
-  display:flex;flex-direction:column;flex:1;min-height:0;
-}
-/* An ID selector outranks the browser's built-in [hidden]{display:none} --
-   without this, the rule above forces display:flex even while the hidden
-   attribute is set, showing both sidebars stacked on top of each other. */
-#discountSidebar[hidden], #feedbackSidebar[hidden]{display:none;}
+/* Discount-mode and feedback-mode sidebar blocks are DIRECT children of
+   .sidebar (not wrapped in an extra div each) specifically so .stop-list's
+   flex:1/overflow-y:auto sizes against .sidebar itself, same as before this
+   feature existed -- an extra flex-nesting level here was previously found
+   to make Chrome's flex layout pass measurably more expensive against the
+   real ~1,166-row list on a throttled/real phone, on top of every mode
+   toggle needing its own reflow. Toggled by data-mode on .sidebar, not by
+   hiding each block individually. */
+.sidebar[data-mode="feedback"] .mode-discount{display:none;}
+.sidebar[data-mode="discount"] .mode-feedback{display:none;}
 .sidebar-section{padding:14px 16px 12px;border-bottom:1px solid var(--border-soft);}
 .filter-label{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:7px;}
 .segmented{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;}
@@ -604,70 +601,66 @@ table.promo-table td.special{font-weight:700;}
   </div>
 
   <div class="body-row mobile-view-map" id="bodyRow">
-    <div class="sidebar">
-      <div id="discountSidebar">
-        <div class="sidebar-section">
-          <div class="sidebar-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="searchInputMobile" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
-          </div>
-          <div class="filter-label">Archetype</div>
-          <div class="segmented" id="archSeg">
-            <button data-v="all" class="active">All</button>
-            <button data-v="Attack">Attack</button>
-            <button data-v="Replace &amp; Cover">Replace &amp; Cover</button>
-          </div>
-          <div class="select-row">
-            <select id="distSelect">
-              <option value="all">All districts</option>
-              <option value="Bang Bua Thong">Bang Bua Thong</option>
-              <option value="Pak Kret">Pak Kret</option>
-              <option value="Sai Noi">Sai Noi</option>
-            </select>
-            <select id="portSelect">
-              <option value="all">All port groups</option>
-              <option value="01_High ≥40%">High port &ge;40%</option>
-              <option value="00_Low <40%">Low port &lt;40%</option>
-            </select>
-          </div>
+    <div class="sidebar" id="sidebarPanel" data-mode="discount">
+      <div class="sidebar-section mode-discount">
+        <div class="sidebar-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="searchInputMobile" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
         </div>
-        <div class="list-summary">
-          <span>Showing <b id="listCount">0</b> stops</span>
-          <select id="sortSelect">
-            <option value="disc">Sort: highest discount</option>
-            <option value="arpa">Sort: highest ARPA</option>
-            <option value="dist">Sort: district</option>
+        <div class="filter-label">Archetype</div>
+        <div class="segmented" id="archSeg">
+          <button data-v="all" class="active">All</button>
+          <button data-v="Attack">Attack</button>
+          <button data-v="Replace &amp; Cover">Replace &amp; Cover</button>
+        </div>
+        <div class="select-row">
+          <select id="distSelect">
+            <option value="all">All districts</option>
+            <option value="Bang Bua Thong">Bang Bua Thong</option>
+            <option value="Pak Kret">Pak Kret</option>
+            <option value="Sai Noi">Sai Noi</option>
+          </select>
+          <select id="portSelect">
+            <option value="all">All port groups</option>
+            <option value="01_High ≥40%">High port &ge;40%</option>
+            <option value="00_Low <40%">Low port &lt;40%</option>
           </select>
         </div>
-        <div class="stop-list" id="stopList"></div>
       </div>
+      <div class="list-summary mode-discount">
+        <span>Showing <b id="listCount">0</b> stops</span>
+        <select id="sortSelect">
+          <option value="disc">Sort: highest discount</option>
+          <option value="arpa">Sort: highest ARPA</option>
+          <option value="dist">Sort: district</option>
+        </select>
+      </div>
+      <div class="stop-list mode-discount" id="stopList"></div>
 
-      <div id="feedbackSidebar" hidden>
-        <div class="sidebar-section">
-          <div class="stat-grid" id="feedbackStats"></div>
-          <div class="select-row">
-            <select id="fbDistSelect">
-              <option value="all">All districts</option>
-              <option value="Bang Bua Thong">Bang Bua Thong</option>
-              <option value="Pak Kret">Pak Kret</option>
-              <option value="Sai Noi">Sai Noi</option>
-            </select>
-            <select id="fbVillageSelect"><option value="all">All villages</option></select>
-          </div>
-          <div class="select-row">
-            <select id="fbSubmitterSelect"><option value="all">All submitters</option></select>
-            <select id="fbDateSelect">
-              <option value="all">Any time</option>
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-            </select>
-          </div>
+      <div class="sidebar-section mode-feedback">
+        <div class="stat-grid" id="feedbackStats"></div>
+        <div class="select-row">
+          <select id="fbDistSelect">
+            <option value="all">All districts</option>
+            <option value="Bang Bua Thong">Bang Bua Thong</option>
+            <option value="Pak Kret">Pak Kret</option>
+            <option value="Sai Noi">Sai Noi</option>
+          </select>
+          <select id="fbVillageSelect"><option value="all">All villages</option></select>
         </div>
-        <div class="list-summary">
-          <span>Showing <b id="fbListCount">0</b> notes</span>
+        <div class="select-row">
+          <select id="fbSubmitterSelect"><option value="all">All submitters</option></select>
+          <select id="fbDateSelect">
+            <option value="all">Any time</option>
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
         </div>
-        <div class="stop-list" id="feedbackList"></div>
       </div>
+      <div class="list-summary mode-feedback">
+        <span>Showing <b id="fbListCount">0</b> notes</span>
+      </div>
+      <div class="stop-list mode-feedback" id="feedbackList"></div>
     </div>
 
     <div class="map-panel">
@@ -1634,8 +1627,7 @@ function openFeedbackGroupDetail(l2id, group){
 function setAppMode(mode){
   if(mode === appMode) return;
   appMode = mode;
-  document.getElementById('discountSidebar').hidden = mode !== 'discount';
-  document.getElementById('feedbackSidebar').hidden = mode !== 'feedback';
+  document.getElementById('sidebarPanel').dataset.mode = mode;
   document.getElementById('feedbackToggle').classList.toggle('active', mode === 'feedback');
   closeDetail();
   // District boundaries stay up in both modes -- the same dashed อำเภอ
