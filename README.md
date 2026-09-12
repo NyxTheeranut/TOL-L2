@@ -5,8 +5,15 @@ color/label read live from the discount lookup table, filterable by
 archetype/district/port group, synced to a Google Sheet.
 
 Anyone signed in with an allow-listed Google account sees the same full
-dataset — the page itself ships with no discount data at all; it's fetched
-after sign-in.
+discount dataset — the page itself ships with no discount data at all; it's
+fetched after sign-in.
+
+On top of that, field reps ("subordinates") can write a free-text note about
+an L2 they've visited in person, tagged to the L2/village with their GPS
+location captured at submission time. A second role ("leader") can review
+every submitted note — across all subordinates, not scoped to a sub-team —
+in a lightweight Feedback dashboard (stat tiles, filters, a list, and the
+note locations plotted on the map). See "Roles and feedback" below.
 
 ## How it fits together
 
@@ -15,10 +22,10 @@ Browser (this page, hosted on GitHub Pages)
    │  Google Sign-In (Google Identity Services)
    ▼
 Apps Script Web App  ──executes as the Sheet owner──▶  Google Sheet
-   │   verifies the ID token against Google directly        "Users" tab (who's allowed in)
+   │   verifies the ID token against Google directly        "Users" tab (who's allowed in + their role)
    │   checks the signed-in email is in the "Users" tab      "L2 Points" tab
    │   returns the full L2 Points + Condition tables         "Condition" tab
-   ▼
+   ▼                                                         "Feedback" tab (field notes, append-only)
 this page renders the map/list/detail panel from that data
 ```
 
@@ -92,8 +99,16 @@ shipping them in a public repo.
    Sheet with a sample row (and, until you've done this, `myL2Data` correctly
    returns "not set up yet" for everyone, including you).
 2. In the Sheet, edit that row (or add a new one) for yourself: `email |
-   note` — the `note` column is just for your own reference, it isn't read
-   by the script. Add a row per teammate. Delete the sample row.
+   note | role` — the `note` column is just for your own reference, it isn't
+   read by the script. Set `role` to `leader` or `subordinate`; leave it
+   blank (or omit it entirely on older rows) and the script treats that row
+   as `subordinate`. Add a row per teammate. Delete the sample row.
+   - **subordinate**: can write field feedback on any L2 (see "Roles and
+     feedback" below), same as everyone else already could do with the map
+     itself.
+   - **leader**: everything a subordinate can do, plus read access to the
+     Feedback dashboard — every note from every subordinate, not just their
+     own team.
 
 ### 5. Push the data
 
@@ -120,6 +135,24 @@ Push this repo to GitHub, then **Settings → Pages → Source: Deploy from a
 branch → `main` / `(root)`**. The page will be live at
 `https://<your-username>.github.io/<repo-name>/`.
 
+## Roles and feedback
+
+No setup step creates the "Feedback" tab directly — same as "Users", it's
+created automatically the first time anyone submits a note (via the
+"Add feedback" box at the bottom of an L2's detail panel, which every
+allow-listed user sees, leader or subordinate). Each row records who wrote
+the note, which L2/village it's tagged to, the note text, and the GPS
+location + accuracy captured at the moment of submission — alongside that
+L2's own recorded lat/lon, so the Feedback dashboard can show the distance
+between "where the L2 actually is" and "where this note was written from."
+
+Leaders get a "Feedback" entry (topbar button on desktop, a third tab on
+mobile) that isn't shown to subordinates at all. It opens a dashboard with
+summary stat tiles, filters (village / submitter / date range), a list of
+every note across every subordinate (flat — not scoped to any team), and
+those notes' locations plotted on the map as distinct purple pins. It's
+fetched lazily, the first time a leader actually opens it, not at sign-in.
+
 ## Local testing
 
 `Start L2 Discount Map.command` (in the Dashboard folder's `Launchers/`)
@@ -134,9 +167,13 @@ and `file://` isn't one you can add.
   script verifies directly against Google (checking both the signature and
   that it was issued for *this* app's Client ID) before trusting the email
   in it, then checks that email is a row in the Users tab.
-- Unlike Route Planner, there's no per-person data scoping here to get
-  wrong — every allow-listed viewer gets the same full dataset, so there's
-  no separate "is this person allowed to see THIS record" check needed.
+- The L2 points/discount dataset itself has no per-person scoping — every
+  allow-listed viewer gets the same full dataset there. Feedback is the one
+  place that does get scoped: `getFeedback` checks the signed-in user's
+  `role` in the Users tab and refuses (`forbidden`) anyone who isn't a
+  `leader`, even if they call the action directly rather than through the
+  page's UI. `submitFeedback` itself is *not* role-gated — any allow-listed
+  user, leader or subordinate, can write a note.
 - `syncL2Data` can't go through the sign-in check at all — it's not a person
   signing in, it's `update_l2_sheet.py` running on your own machine — so
   it's gated by `SYNC_SECRET` instead (see step 2 and step 5 above). This

@@ -179,6 +179,14 @@ body{
 }
 .topbar-stat b{font-size:15px;}
 .topbar-stat span{color:var(--text-muted);font-weight:500;}
+.feedback-toggle{
+  display:flex;align-items:center;gap:6px;flex:0 0 auto;
+  height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text-muted);cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;
+}
+.feedback-toggle:hover{color:var(--text);background:var(--surface-3);}
+.feedback-toggle.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
 .theme-toggle{
   width:34px;height:34px;flex:0 0 34px;border-radius:999px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text-muted);cursor:pointer;
@@ -280,8 +288,35 @@ body{
   box-shadow:0 1px 4px rgba(10,16,22,.4);
 }
 
-.locate-toast{
-  position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:1000;
+/* Feedback pins: a handful to a few hundred over time, nowhere near the
+   1,166 L2 pins' scale -- a plain divIcon marker (same on every device) is
+   fine here, no need for the canvas treatment those needed. Deliberately a
+   different shape (rounded square, not a teardrop) so it never reads as
+   just another discount pin at a glance. */
+.fb-pin{
+  width:22px;height:22px;border-radius:7px;
+  background:#7c5cff;border:2px solid var(--surface);
+  box-shadow:0 2px 6px rgba(10,16,22,.4);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+}
+.fb-pin svg{width:12px;height:12px;}
+
+/* Feedback mini-form, inside the L2 detail panel -- every allow-listed role
+   gets this (submitting isn't leader-gated, only reading others' notes is). */
+.fb-form{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
+.fb-form textarea{
+  width:100%;resize:vertical;min-height:64px;margin-top:2px;box-sizing:border-box;
+  font:inherit;font-size:12.5px;padding:10px 12px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text);
+}
+.fb-form textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.fb-form button.gmaps-btn{
+  width:100%;justify-content:center;margin:10px 0 0;cursor:pointer;font:inherit;
+}
+.fb-form button.gmaps-btn:disabled{opacity:.6;cursor:default;}
+
+.app-toast{
+  position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:2000;
   background:var(--surface);border:1px solid var(--border);border-radius:8px;
   padding:8px 14px;font-size:12.5px;color:var(--text);box-shadow:var(--shadow-sm);
   max-width:calc(100% - 32px);text-align:center;display:none;
@@ -520,6 +555,10 @@ table.promo-table td.special{font-weight:700;}
     </div>
     <div class="topbar-spacer"></div>
     <div class="topbar-stat"><b id="statShown">0</b><span>/ <b id="statTotal">0</b> L2 with an active discount</span></div>
+    <button class="feedback-toggle" id="feedbackToggle" title="View field feedback" aria-label="View field feedback" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+      <span>Feedback</span>
+    </button>
     <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
       <svg class="icon-moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.5 8.5 0 019.3 3.6a.6.6 0 00-.7-.8A9.6 9.6 0 1021.2 15.4a.6.6 0 00-.8-.7z"/></svg>
@@ -528,45 +567,68 @@ table.promo-table td.special{font-weight:700;}
 
   <div class="body-row mobile-view-map" id="bodyRow">
     <div class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input id="searchInputMobile" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
+      <div id="discountSidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="searchInputMobile" type="text" placeholder="Search L2 ID, HPB No., or village&hellip;" autocomplete="off">
+          </div>
+          <div class="filter-label">Archetype</div>
+          <div class="segmented" id="archSeg">
+            <button data-v="all" class="active">All</button>
+            <button data-v="Attack">Attack</button>
+            <button data-v="Replace &amp; Cover">Replace &amp; Cover</button>
+          </div>
+          <div class="select-row">
+            <select id="distSelect">
+              <option value="all">All districts</option>
+              <option value="Bang Bua Thong">Bang Bua Thong</option>
+              <option value="Pak Kret">Pak Kret</option>
+              <option value="Sai Noi">Sai Noi</option>
+            </select>
+            <select id="portSelect">
+              <option value="all">All port groups</option>
+              <option value="01_High ≥40%">High port &ge;40%</option>
+              <option value="00_Low <40%">Low port &lt;40%</option>
+            </select>
+          </div>
         </div>
-        <div class="filter-label">Archetype</div>
-        <div class="segmented" id="archSeg">
-          <button data-v="all" class="active">All</button>
-          <button data-v="Attack">Attack</button>
-          <button data-v="Replace &amp; Cover">Replace &amp; Cover</button>
-        </div>
-        <div class="select-row">
-          <select id="distSelect">
-            <option value="all">All districts</option>
-            <option value="Bang Bua Thong">Bang Bua Thong</option>
-            <option value="Pak Kret">Pak Kret</option>
-            <option value="Sai Noi">Sai Noi</option>
+        <div class="list-summary">
+          <span>Showing <b id="listCount">0</b> stops</span>
+          <select id="sortSelect">
+            <option value="disc">Sort: highest discount</option>
+            <option value="arpa">Sort: highest ARPA</option>
+            <option value="dist">Sort: district</option>
           </select>
-          <select id="portSelect">
-            <option value="all">All port groups</option>
-            <option value="01_High ≥40%">High port &ge;40%</option>
-            <option value="00_Low <40%">Low port &lt;40%</option>
-          </select>
         </div>
+        <div class="stop-list" id="stopList"></div>
       </div>
-      <div class="list-summary">
-        <span>Showing <b id="listCount">0</b> stops</span>
-        <select id="sortSelect">
-          <option value="disc">Sort: highest discount</option>
-          <option value="arpa">Sort: highest ARPA</option>
-          <option value="dist">Sort: district</option>
-        </select>
+
+      <div id="feedbackSidebar" hidden>
+        <div class="sidebar-section">
+          <div class="stat-grid" id="feedbackStats"></div>
+          <div class="select-row">
+            <select id="fbVillageSelect"><option value="all">All villages</option></select>
+            <select id="fbSubmitterSelect"><option value="all">All submitters</option></select>
+          </div>
+          <div class="select-row">
+            <select id="fbDateSelect">
+              <option value="all">Any time</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </div>
+        </div>
+        <div class="list-summary">
+          <span>Showing <b id="fbListCount">0</b> notes</span>
+        </div>
+        <div class="stop-list" id="feedbackList"></div>
       </div>
-      <div class="stop-list" id="stopList"></div>
     </div>
 
     <div class="map-panel">
       <div id="map"></div>
-      <div class="locate-toast" id="locateToast"></div>
+      <div class="app-toast" id="appToast"></div>
 
       <details class="map-legend" open>
         <summary>Discount, by pin color</summary>
@@ -592,6 +654,10 @@ table.promo-table td.special{font-weight:700;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       List
     </button>
+    <button data-view="feedback" id="mobileFeedbackTab" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+      Feedback
+    </button>
   </div>
 </div>
 
@@ -604,6 +670,17 @@ table.promo-table td.special{font-weight:700;}
    (Sheet <- update_l2_sheet.py <- source workbook) and one-time setup. ===== */
 let CONDITIONS = [];
 let DATA = [];
+/* Set at sign-in (see onGoogleSignIn) -- userRole gates the Feedback view
+   and its tab-bar/topbar entry; currentIdToken is reused for the
+   submitFeedback/getFeedback calls a session makes after the initial
+   myL2Data fetch, so those don't need the user to sign in twice. */
+let userRole = 'subordinate';
+let currentIdToken = null;
+let FEEDBACK = [];
+let feedbackLoaded = false;
+/* 'discount' (the map everyone gets) or 'feedback' (leader-only dashboard) --
+   see setAppMode, below fetchFeedback/renderFeedback. */
+let appMode = 'discount';
 
 function findCondition(arch, arpaGroup, port, nad){
   return CONDITIONS.find(c => c.arch===arch && c.arpaGroup===arpaGroup && c.port===port && c.nad===nad);
@@ -642,7 +719,7 @@ const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
    inside initApp(), once real data exists to size/populate them with — but
    every function below is safe to define now, since none of them execute
    until called (all interaction is blocked behind #loginGate until then). */
-let map, tileLayer, districtAreaLayer, pinLayer;
+let map, tileLayer, districtAreaLayer, pinLayer, feedbackPinLayer;
 
 /* ===== district boundaries — real อำเภอ administrative outlines (Royal Thai
    Survey Dept / UN OCHA COD-AB Thailand, via data.humdata.org). Public
@@ -1071,9 +1148,66 @@ function openDetail(d){
         </table>
       </div>
       <div class="detail-foot">Prices in THB/month, 24-month contract. Looked up from the Condition sheet by Archetype (${d.arch}) &times; ARPA band (${arpaGroupLabel(d.arpaGroup)}) &times; Port group (${portLabel(d.port)}). Synced live from a Google Sheet — see the repo README.</div>
+      <div class="fb-form">
+        <div class="promo-head"><h3>Add field feedback</h3></div>
+        <textarea id="fbNotesInput" placeholder="What did you see on this visit?" rows="3"></textarea>
+        <button class="gmaps-btn" id="fbSubmitBtn" type="button">Submit feedback</button>
+      </div>
     </div>`;
   panelEl.classList.add('open');
   document.getElementById('detailCloseBtn').onclick = closeDetail;
+  document.getElementById('fbSubmitBtn').onclick = ()=> submitFeedbackFor(d);
+}
+
+/* One-shot GPS read (not watchPosition, unlike LocateControl -- a single
+   reading at the moment of submission is the point, not a live track) then
+   POSTs submitFeedback. Any allow-listed role may call this; it's not
+   gated by userRole the way the Feedback dashboard itself is. */
+function submitFeedbackFor(d){
+  const textarea = document.getElementById('fbNotesInput');
+  const btn = document.getElementById('fbSubmitBtn');
+  const notes = textarea.value.trim();
+  if(!notes){ showToast('Write a note before submitting.'); return; }
+  if(!navigator.geolocation){ showToast("This browser can't share your location."); return; }
+  btn.disabled = true;
+  btn.textContent = 'Getting your location…';
+  navigator.geolocation.getCurrentPosition(
+    async (pos)=>{
+      btn.textContent = 'Submitting…';
+      try{
+        const res = await fetch(DEFAULT_SYNC_URL, {
+          method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify({
+            action:'submitFeedback', idToken: currentIdToken, l2id: d.id, notes,
+            lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy,
+          }),
+        });
+        const data = await res.json();
+        if(data.ok){
+          showToast('Feedback submitted.');
+          textarea.value = '';
+          feedbackLoaded = false; // stale now -- next time a leader opens the dashboard, refetch
+        } else {
+          showToast(data.message || ('Could not submit: ' + (data.error || 'unknown error')));
+        }
+      }catch(e){
+        showToast('Could not reach the server. Try again.');
+        console.warn('submitFeedback fetch failed', e);
+      }
+      btn.disabled = false;
+      btn.textContent = 'Submit feedback';
+    },
+    (err)=>{
+      btn.disabled = false;
+      btn.textContent = 'Submit feedback';
+      showToast(
+        err.code === err.PERMISSION_DENIED ? 'Location permission denied — feedback needs your location.' :
+        err.code === err.TIMEOUT ? 'Location took too long — try again.' :
+        'Could not get your location.'
+      );
+    },
+    { enableHighAccuracy:true, maximumAge:15000, timeout:15000 }
+  );
 }
 function closeDetail(){
   document.getElementById('detailPanel').classList.remove('open');
@@ -1097,7 +1231,13 @@ function setMobileView(view){
   const returningToMap = view==='map' && bodyRow.classList.contains('mobile-view-list');
   bodyRow.classList.toggle('mobile-view-list', view==='list');
   bodyRow.classList.toggle('mobile-view-map', view==='map');
-  document.querySelectorAll('#mobileTabbar button').forEach(b=> b.classList.toggle('active', b.dataset.view===view));
+  // The Feedback tab is a MODE, not a pane like Map/List -- while it's
+  // active, it alone shows as active regardless of which pane (map or
+  // list) is currently on screen underneath it.
+  document.querySelectorAll('#mobileTabbar button').forEach(b=>{
+    const isFeedbackBtn = b.dataset.view === 'feedback';
+    b.classList.toggle('active', appMode==='feedback' ? isFeedbackBtn : (!isFeedbackBtn && b.dataset.view===view));
+  });
   // Synchronous, not setTimeout(0): reading layout right after the display:none
   // -> flex class swap above forces the browser to lay it out NOW, which is
   // exactly what makes this safe to call immediately. pan:false skips
@@ -1125,12 +1265,12 @@ function userLocIcon(){
     className: 'user-loc-outer', iconSize:[18,18], iconAnchor:[9,9]
   });
 }
-function showLocateToast(msg){
-  const el = document.getElementById('locateToast');
+function showToast(msg){
+  const el = document.getElementById('appToast');
   el.textContent = msg;
   el.style.display = 'block';
-  clearTimeout(showLocateToast._t);
-  showLocateToast._t = setTimeout(()=>{ el.style.display = 'none'; }, 4000);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>{ el.style.display = 'none'; }, 4000);
 }
 
 const LocateControl = L.Control.extend({
@@ -1151,7 +1291,7 @@ const LocateControl = L.Control.extend({
 
 function onLocateClick(){
   if(!navigator.geolocation){
-    showLocateToast("This browser can't share your location.");
+    showToast("This browser can't share your location.");
     return;
   }
   // Already watching -- a second tap just recenters on the last known fix,
@@ -1176,7 +1316,7 @@ function onLocateClick(){
     (err)=>{
       if(link) link.classList.remove('locating');
       geoWatchId = null;
-      showLocateToast(
+      showToast(
         err.code === err.PERMISSION_DENIED ? 'Location permission denied.' :
         err.code === err.TIMEOUT ? 'Location took too long — try again.' :
         'Could not get your location.'
@@ -1184,6 +1324,199 @@ function onLocateClick(){
     },
     { enableHighAccuracy:true, maximumAge:15000, timeout:15000 }
   );
+}
+
+/* ===== leader feedback dashboard — flat across every subordinate, not
+   scoped to a sub-team, same as the plan behind this feature calls for.
+   Fetched lazily: only issued the first time a leader actually opens the
+   Feedback view, not eagerly at sign-in (a leader who never opens it costs
+   nothing extra). feedbackLoaded is flipped back to false after a
+   successful submitFeedback call (see submitFeedbackFor) so a leader who
+   already has the dashboard open sees a refetch rather than a stale list
+   next time they revisit it. ===== */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* Straight-line distance between the L2's own recorded location and where
+   the feedback's GPS fix actually was, in meters -- a leader's main signal
+   for "was this really written on-site." Null when either point is missing
+   (an L2 that's since been removed from L2 Points, or a denied/failed
+   geolocation read at submission time). */
+function haversineMeters(lat1, lon1, lat2, lon2){
+  if([lat1,lon1,lat2,lon2].some(v=> v==null || isNaN(v))) return null;
+  const R = 6371000, toRad = x=> x*Math.PI/180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const fbState = { village:'all', submitter:'all', days:'all' };
+
+async function fetchFeedback(){
+  if(!currentIdToken) return;
+  try{
+    const res = await fetch(DEFAULT_SYNC_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'getFeedback', idToken: currentIdToken }),
+    });
+    const data = await res.json();
+    if(!data.ok){
+      showToast(data.message || 'Could not load feedback.');
+      return;
+    }
+    FEEDBACK = data.feedback || [];
+    feedbackLoaded = true;
+    populateFeedbackFilters();
+    renderFeedback();
+  }catch(e){
+    showToast('Could not reach the server to load feedback.');
+    console.warn('getFeedback fetch failed', e);
+  }
+}
+
+/* Rebuilds the village/submitter <select> option lists from whatever's
+   actually in FEEDBACK right now, keeping the current selection if it's
+   still a valid option (falls back to "all" otherwise -- e.g. the one
+   submitter someone had filtered to turns out to have zero rows). */
+function populateFeedbackFilters(){
+  const villages = [...new Set(FEEDBACK.map(f=>f.village).filter(Boolean))].sort();
+  const submitters = [...new Set(FEEDBACK.map(f=>f.submitterEmail).filter(Boolean))].sort();
+
+  const villageSel = document.getElementById('fbVillageSelect');
+  fbState.village = villages.includes(fbState.village) ? fbState.village : 'all';
+  villageSel.innerHTML = `<option value="all">All villages</option>` +
+    villages.map(v=>`<option value="${escapeHtml(v)}"${v===fbState.village?' selected':''}>${escapeHtml(v)}</option>`).join('');
+
+  const submitterSel = document.getElementById('fbSubmitterSelect');
+  fbState.submitter = submitters.includes(fbState.submitter) ? fbState.submitter : 'all';
+  submitterSel.innerHTML = `<option value="all">All submitters</option>` +
+    submitters.map(v=>`<option value="${escapeHtml(v)}"${v===fbState.submitter?' selected':''}>${escapeHtml(v)}</option>`).join('');
+}
+
+function filteredFeedback(){
+  const now = Date.now();
+  return FEEDBACK.filter(f=>{
+    if(fbState.village!=='all' && f.village!==fbState.village) return false;
+    if(fbState.submitter!=='all' && f.submitterEmail!==fbState.submitter) return false;
+    if(fbState.days!=='all'){
+      const t = new Date(f.timestamp).getTime();
+      if(isNaN(t) || (now - t) > (+fbState.days)*86400000) return false;
+    }
+    return true;
+  });
+}
+
+function renderFeedback(){
+  // Stat tiles always summarize everything on file, independent of the
+  // filters below -- they're the "whole program" view; the list is the
+  // "narrowed-down" view.
+  const villageCount = new Set(FEEDBACK.map(f=>f.village).filter(Boolean)).size;
+  const submitterCount = new Set(FEEDBACK.map(f=>f.submitterEmail).filter(Boolean)).size;
+  const weekAgo = Date.now() - 7*86400000;
+  const last7 = FEEDBACK.filter(f=> new Date(f.timestamp).getTime() >= weekAgo).length;
+  document.getElementById('feedbackStats').innerHTML = `
+    <div class="stat-tile"><div class="lbl">Total notes</div><div class="val tnum">${FEEDBACK.length.toLocaleString('en-US')}</div></div>
+    <div class="stat-tile"><div class="lbl">Villages covered</div><div class="val tnum">${villageCount.toLocaleString('en-US')}</div></div>
+    <div class="stat-tile"><div class="lbl">Submitters</div><div class="val tnum">${submitterCount.toLocaleString('en-US')}</div></div>
+    <div class="stat-tile"><div class="lbl">Last 7 days</div><div class="val tnum">${last7.toLocaleString('en-US')}</div></div>
+  `;
+
+  const idx = filteredFeedback();
+  document.getElementById('fbListCount').textContent = idx.length.toLocaleString('en-US');
+
+  const listEl = document.getElementById('feedbackList');
+  if(idx.length===0){
+    listEl.innerHTML = `<div class="empty-note">No feedback matches these filters.</div>`;
+  } else {
+    listEl.innerHTML = idx.map(f=>{
+      const when = new Date(f.timestamp);
+      const whenLabel = isNaN(when.getTime()) ? f.timestamp :
+        when.toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+      return `<div class="stop-row" data-fbidx="${FEEDBACK.indexOf(f)}">
+        <span class="stop-dot" style="background:#7c5cff;"></span>
+        <div class="stop-main">
+          <div class="stop-id mono">${escapeHtml(f.l2id)}</div>
+          ${f.village ? `<div class="stop-village" title="${escapeHtml(f.village)}">${escapeHtml(f.village)}</div>` : ''}
+          <div class="stop-loc">${escapeHtml(f.submitterEmail)} &middot; ${whenLabel}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  feedbackPinLayer.clearLayers();
+  idx.forEach(f=>{
+    if(f.lat==null || f.lon==null) return;
+    const marker = L.marker([f.lat, f.lon], {
+      icon: L.divIcon({
+        html: `<div class="fb-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>`,
+        className:'fb-pin-outer', iconSize:[22,22], iconAnchor:[11,22]
+      })
+    });
+    marker.bindTooltip(f.l2id, { direction:'top', offset:[0,-18], className:'l2-tooltip' });
+    marker.on('click', ()=> openFeedbackDetail(f));
+    feedbackPinLayer.addLayer(marker);
+  });
+}
+
+function openFeedbackDetail(f){
+  const panelEl = document.getElementById('detailPanel');
+  const when = new Date(f.timestamp);
+  const whenLabel = isNaN(when.getTime()) ? f.timestamp : when.toLocaleString('en-US', {dateStyle:'medium', timeStyle:'short'});
+  const dist = haversineMeters(f.l2Lat, f.l2Lon, f.lat, f.lon);
+  const distLabel = dist==null ? 'unknown' : dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+
+  panelEl.innerHTML = `
+    <div class="detail-head">
+      <div>
+        ${f.village ? `<div class="detail-village">${escapeHtml(f.village)}</div>` : ''}
+        <div class="detail-id">${escapeHtml(f.l2id)}</div>
+        <div class="detail-loc">${escapeHtml(f.adm3)}, ${escapeHtml(f.adm2)} &middot; Nonthaburi</div>
+      </div>
+      <button class="detail-close" id="detailCloseBtn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="detail-body">
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="lbl">Submitted by</div><div class="val">${escapeHtml(f.submitterEmail)}</div></div>
+        <div class="stat-tile"><div class="lbl">When</div><div class="val">${whenLabel}</div></div>
+        <div class="stat-tile"><div class="lbl">Distance from L2</div><div class="val tnum">${distLabel}</div></div>
+        <div class="stat-tile"><div class="lbl">GPS accuracy</div><div class="val tnum">${f.accuracy!=null ? Math.round(f.accuracy)+' m' : 'unknown'}</div></div>
+      </div>
+      <div class="promo-head"><h3>Field notes</h3></div>
+      <div class="detail-foot" style="margin-top:0;padding-top:0;border-top:none;font-size:13px;color:var(--text);white-space:pre-wrap;">${escapeHtml(f.notes)}</div>
+    </div>`;
+  panelEl.classList.add('open');
+  document.getElementById('detailCloseBtn').onclick = closeDetail;
+
+  if(f.lat!=null && f.lon!=null){
+    const target = [f.lat, f.lon], targetZoom = Math.max(map.getZoom(), 15);
+    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
+    else map.flyTo(target, targetZoom, {duration:0.5});
+  }
+}
+
+/* Swaps the sidebar content, the visible map layers, and (lazily) fetches
+   the feedback data -- the discount map's own pins/list/filters are
+   untouched either way, just hidden while this mode is active. */
+function setAppMode(mode){
+  if(mode === appMode) return;
+  appMode = mode;
+  document.getElementById('discountSidebar').hidden = mode !== 'discount';
+  document.getElementById('feedbackSidebar').hidden = mode !== 'feedback';
+  document.getElementById('feedbackToggle').classList.toggle('active', mode === 'feedback');
+  closeDetail();
+  if(mode === 'feedback'){
+    map.removeLayer(pinLayer);
+    map.removeLayer(districtAreaLayer);
+    if(!map.hasLayer(feedbackPinLayer)) map.addLayer(feedbackPinLayer);
+    if(!feedbackLoaded) fetchFeedback(); else renderFeedback();
+  } else {
+    map.removeLayer(feedbackPinLayer);
+    if(!map.hasLayer(pinLayer)) map.addLayer(pinLayer);
+    if(!map.hasLayer(districtAreaLayer)) map.addLayer(districtAreaLayer);
+  }
 }
 
 function initApp(){
@@ -1209,6 +1542,13 @@ function initApp(){
   }).addTo(map);
   districtAreaLayer = L.layerGroup().addTo(map);
   pinLayer = L.layerGroup().addTo(map);
+  // Not .addTo(map) -- only shown once setAppMode('feedback') switches to it.
+  feedbackPinLayer = L.layerGroup();
+
+  if(userRole === 'leader'){
+    document.getElementById('feedbackToggle').hidden = false;
+    document.getElementById('mobileFeedbackTab').hidden = false;
+  }
 
   if(IS_TOUCH){
     // District boundaries (renderDistrictAreas, above) are also canvas-
@@ -1265,8 +1605,27 @@ function initApp(){
 
   document.getElementById('mobileTabbar').addEventListener('click',(e)=>{
     const btn = e.target.closest('button'); if(!btn) return;
+    if(btn.dataset.view === 'feedback'){
+      setAppMode(appMode === 'feedback' ? 'discount' : 'feedback');
+      setMobileView(appMode === 'feedback' ? 'list' : 'map');
+      return;
+    }
+    if(appMode !== 'discount') setAppMode('discount');
     setMobileView(btn.dataset.view);
   });
+
+  document.getElementById('feedbackToggle').addEventListener('click', ()=>{
+    setAppMode(appMode === 'feedback' ? 'discount' : 'feedback');
+  });
+  document.getElementById('feedbackList').addEventListener('click',(e)=>{
+    const row = e.target.closest('.stop-row');
+    if(!row) return;
+    const f = FEEDBACK[+row.dataset.fbidx];
+    if(f) openFeedbackDetail(f);
+  });
+  document.getElementById('fbVillageSelect').addEventListener('change',(e)=>{ fbState.village=e.target.value; renderFeedback(); });
+  document.getElementById('fbSubmitterSelect').addEventListener('change',(e)=>{ fbState.submitter=e.target.value; renderFeedback(); });
+  document.getElementById('fbDateSelect').addEventListener('change',(e)=>{ fbState.days=e.target.value; renderFeedback(); });
 
   render();
   appInitialized = true;
@@ -1306,6 +1665,8 @@ async function onGoogleSignIn(response){
     }
     DATA = data.points || [];
     CONDITIONS = data.conditions || [];
+    userRole = data.role === 'leader' ? 'leader' : 'subordinate';
+    currentIdToken = idToken;
     document.getElementById('loginGate').style.display = 'none';
     initApp();
   }catch(e){
