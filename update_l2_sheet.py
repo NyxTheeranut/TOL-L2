@@ -55,7 +55,23 @@ def _find(name, folders):
     return DASHBOARD_DIR / folders[0] / name
 
 
-L2_XLSX = _find("20260801 Project Atlas L2 Aug'26 vNTB Pak Kret.xlsx", ["L2", "Config", "."])
+def _find_latest(pattern, folders):
+    """Newest file matching pattern across candidate folders. Filenames here start with
+    a YYYYMMDD date (e.g. "20260801 Project Atlas L2 Aug'26 vNTB Pak Kret.xlsx"), so
+    sorting by name descending is also sorting chronologically, newest first.
+    A hardcoded exact filename here used to mean this script silently pointed at a
+    stale file (or errored "not found") every time a new month's export replaced it --
+    matching by pattern instead means dropping in next month's file is the whole update,
+    same as aggregate_bb.py already does for the TOL_*.txt files."""
+    candidates = []
+    for folder in folders:
+        candidates.extend((DASHBOARD_DIR / folder).glob(pattern))
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda p: p.name, reverse=True)[0]
+
+
+L2_XLSX = _find_latest("*Project Atlas L2*.xlsx", ["L2", "Config", "."])
 VILLAGE_FILE = _find("Active FTTH In Village_BMA-West.TXT", [Path("TOL") / "Data", "Config", "."])
 SYNC_SECRET_FILE = DASHBOARD_DIR / "Config" / "l2_sync_secret.txt"
 
@@ -143,8 +159,11 @@ def load_points(wb, conditions, village_lookup):
 
 
 def main():
-    if not L2_XLSX.exists():
-        raise SystemExit(f"Not found: {L2_XLSX}")
+    if not L2_XLSX or not L2_XLSX.exists():
+        raise SystemExit(
+            "No '*Project Atlas L2*.xlsx' found in L2/ (or Config/, or the Dashboard "
+            "root) -- drop the latest month's export in L2/ and re-run."
+        )
     if not VILLAGE_FILE.exists():
         raise SystemExit(f"Not found: {VILLAGE_FILE}")
     if not SYNC_SECRET_FILE.exists():
