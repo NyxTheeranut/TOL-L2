@@ -355,6 +355,25 @@ body{
   padding:8px 14px;font-size:12.5px;color:var(--text);box-shadow:var(--shadow-sm);
   max-width:calc(100% - 32px);text-align:center;display:none;
 }
+
+/* Shown only for the one transition that jumps the map straight to a brand
+   new location with no animation (list tap -> map, see selectStop) --
+   tiles for that area haven't loaded yet, so without this the screen reads
+   as frozen for however long that takes over a real connection, even
+   though input is never actually blocked (pointer-events:none -- purely a
+   "something's happening" hint, never something to wait out). */
+.map-loading{
+  position:absolute;inset:0;z-index:900;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(10,16,22,.12);
+  pointer-events:none;
+}
+.map-loading-spinner{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid var(--border);border-top-color:var(--accent);
+  animation:map-loading-spin .7s linear infinite;
+}
+@keyframes map-loading-spin{ to{ transform:rotate(360deg); } }
 .leaflet-tooltip.l2-tooltip{
   background:var(--surface);color:var(--text);border:1px solid var(--border);
   border-radius:6px;box-shadow:var(--shadow-sm);
@@ -665,6 +684,7 @@ table.promo-table td.special{font-weight:700;}
 
     <div class="map-panel">
       <div id="map"></div>
+      <div class="map-loading" id="mapLoading" hidden><div class="map-loading-spinner"></div></div>
       <div class="app-toast" id="appToast"></div>
 
       <details class="map-legend" open>
@@ -1131,12 +1151,7 @@ function selectStop(i, fromList){
     // Jumping straight there instead skips the animation entirely for that
     // one case, which is barely visible anyway since the view was just
     // hidden a moment ago.
-    const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')){
-      map.setView(target, targetZoom, {animate:false});
-    } else {
-      map.flyTo(target, targetZoom, {duration:0.5});
-    }
+    flyOrJumpTo([d.lat, d.lon], Math.max(map.getZoom(), 15));
   }
 
   const skipDetailForNow = IS_TOUCH && fromList && !sameAsSelected;
@@ -1318,6 +1333,35 @@ function showToast(msg){
   el.style.display = 'block';
   clearTimeout(showToast._t);
   showToast._t = setTimeout(()=>{ el.style.display = 'none'; }, 4000);
+}
+
+/* Jumps the map to one specific location -- shared by every "show this L2/
+   feedback note on the map" call site (selectStop, openFeedbackDetail,
+   openFeedbackGroupDetail). setMobileView('map') returning true means the
+   map panel was display:none a moment ago (List -> Map on mobile); an
+   instant, unanimated setView is used there on purpose (see the comment
+   inside selectStop this was originally added for) rather than compounding
+   a resize with an animated pan. A pin tap, where the map is already on
+   screen, still gets the smoother flyTo.
+   Either way, a jump like this can land on an area whose tiles were never
+   loaded before -- real network time, not something skipping the animation
+   removes. Without any feedback, that reads as the app being frozen for
+   however long that takes; mapLoading is purely a visual "still working"
+   cue (pointer-events:none -- it never actually blocks input), cleared by
+   the tile layer's own 'load' event or a timeout if tiles never resolve. */
+function flyOrJumpTo(target, targetZoom){
+  if(setMobileView('map')){
+    document.getElementById('mapLoading').hidden = false;
+    clearTimeout(flyOrJumpTo._t);
+    flyOrJumpTo._t = setTimeout(()=>{ document.getElementById('mapLoading').hidden = true; }, 4000);
+    tileLayer.once('load', ()=>{
+      clearTimeout(flyOrJumpTo._t);
+      document.getElementById('mapLoading').hidden = true;
+    });
+    map.setView(target, targetZoom, {animate:false});
+  } else {
+    map.flyTo(target, targetZoom, {duration:0.5});
+  }
 }
 
 const LocateControl = L.Control.extend({
@@ -1571,9 +1615,7 @@ function openFeedbackDetail(f){
   document.getElementById('detailCloseBtn').onclick = closeDetail;
 
   if(f.l2Lat!=null && f.l2Lon!=null){
-    const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
-    else map.flyTo(target, targetZoom, {duration:0.5});
+    flyOrJumpTo([f.l2Lat, f.l2Lon], Math.max(map.getZoom(), 15));
   }
 }
 
@@ -1615,9 +1657,7 @@ function openFeedbackGroupDetail(l2id, group){
   document.getElementById('detailCloseBtn').onclick = closeDetail;
 
   if(first.l2Lat!=null && first.l2Lon!=null){
-    const target = [first.l2Lat, first.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
-    else map.flyTo(target, targetZoom, {duration:0.5});
+    flyOrJumpTo([first.l2Lat, first.l2Lon], Math.max(map.getZoom(), 15));
   }
 }
 
