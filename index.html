@@ -434,9 +434,10 @@ body{
 
 .promo-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .promo-head h3{margin:0;font-size:13px;font-weight:700;}
-.promo-head .badge{
+.badge{
+  display:inline-block;vertical-align:middle;
   font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);
-  padding:3px 9px;border-radius:999px;
+  padding:3px 9px;border-radius:999px;white-space:nowrap;
 }
 table.promo-table{width:100%;border-collapse:collapse;font-size:11.5px;}
 table.promo-table thead th{
@@ -1352,6 +1353,16 @@ function haversineMeters(lat1, lon1, lat2, lon2){
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+// Feedback rows don't carry their own discount -- they're tagged with an
+// l2id, which is looked up live against DATA (the same lookup the discount
+// map itself already did in initApp). Returns null if that L2 no longer has
+// an active discount (or ever did) by the time a leader views this note --
+// eligibility can change between when a note was written and when it's read.
+function discountForL2_(l2id){
+  const d = DATA.find(x=>x.id===l2id);
+  return d ? Math.round(d.cond.discPct*100) : null;
+}
+
 const fbState = { village:'all', submitter:'all', days:'all' };
 
 async function fetchFeedback(){
@@ -1434,10 +1445,11 @@ function renderFeedback(){
       const when = new Date(f.timestamp);
       const whenLabel = isNaN(when.getTime()) ? f.timestamp :
         when.toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+      const discPct = discountForL2_(f.l2id);
       return `<div class="stop-row" data-fbidx="${FEEDBACK.indexOf(f)}">
         <span class="stop-dot" style="background:#7c5cff;"></span>
         <div class="stop-main">
-          <div class="stop-id mono">${escapeHtml(f.l2id)}</div>
+          <div class="stop-id mono">${escapeHtml(f.l2id)}${discPct!=null ? ` <span class="badge">${discPct}% off</span>` : ''}</div>
           ${f.village ? `<div class="stop-village" title="${escapeHtml(f.village)}">${escapeHtml(f.village)}</div>` : ''}
           <div class="stop-loc">${escapeHtml(f.submitterEmail)} &middot; ${whenLabel}</div>
         </div>
@@ -1471,12 +1483,13 @@ function openFeedbackDetail(f){
   const whenLabel = isNaN(when.getTime()) ? f.timestamp : when.toLocaleString('en-US', {dateStyle:'medium', timeStyle:'short'});
   const dist = haversineMeters(f.l2Lat, f.l2Lon, f.lat, f.lon);
   const distLabel = dist==null ? 'unknown' : dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+  const discPct = discountForL2_(f.l2id);
 
   panelEl.innerHTML = `
     <div class="detail-head">
       <div>
         ${f.village ? `<div class="detail-village">${escapeHtml(f.village)}</div>` : ''}
-        <div class="detail-id">${escapeHtml(f.l2id)}</div>
+        <div class="detail-id">${escapeHtml(f.l2id)}${discPct!=null ? ` <span class="badge">${discPct}% off</span>` : ''}</div>
         <div class="detail-loc">${escapeHtml(f.adm3)}, ${escapeHtml(f.adm2)} &middot; Nonthaburi</div>
       </div>
       <button class="detail-close" id="detailCloseBtn" aria-label="Close">
