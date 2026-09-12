@@ -633,10 +633,16 @@ table.promo-table td.special{font-weight:700;}
         <div class="sidebar-section">
           <div class="stat-grid" id="feedbackStats"></div>
           <div class="select-row">
+            <select id="fbDistSelect">
+              <option value="all">All districts</option>
+              <option value="Bang Bua Thong">Bang Bua Thong</option>
+              <option value="Pak Kret">Pak Kret</option>
+              <option value="Sai Noi">Sai Noi</option>
+            </select>
             <select id="fbVillageSelect"><option value="all">All villages</option></select>
-            <select id="fbSubmitterSelect"><option value="all">All submitters</option></select>
           </div>
           <div class="select-row">
+            <select id="fbSubmitterSelect"><option value="all">All submitters</option></select>
             <select id="fbDateSelect">
               <option value="all">Any time</option>
               <option value="7">Last 7 days</option>
@@ -1387,7 +1393,7 @@ function discountForL2_(l2id){
   return d ? Math.round(d.cond.discPct*100) : null;
 }
 
-const fbState = { village:'all', submitter:'all', days:'all' };
+const fbState = { dist:'all', village:'all', submitter:'all', days:'all' };
 
 async function fetchFeedback(){
   if(!currentIdToken) return;
@@ -1433,6 +1439,7 @@ function populateFeedbackFilters(){
 function filteredFeedback(){
   const now = Date.now();
   return FEEDBACK.filter(f=>{
+    if(fbState.dist!=='all' && f.adm2!==fbState.dist) return false;
     if(fbState.village!=='all' && f.village!==fbState.village) return false;
     if(fbState.submitter!=='all' && f.submitterEmail!==fbState.submitter) return false;
     if(fbState.days!=='all'){
@@ -1731,6 +1738,7 @@ function initApp(){
     const f = FEEDBACK[+row.dataset.fbidx];
     if(f) openFeedbackDetail(f);
   });
+  document.getElementById('fbDistSelect').addEventListener('change',(e)=>{ fbState.dist=e.target.value; renderFeedback(); });
   document.getElementById('fbVillageSelect').addEventListener('change',(e)=>{ fbState.village=e.target.value; renderFeedback(); });
   document.getElementById('fbSubmitterSelect').addEventListener('change',(e)=>{ fbState.submitter=e.target.value; renderFeedback(); });
   document.getElementById('fbDateSelect').addEventListener('change',(e)=>{ fbState.days=e.target.value; renderFeedback(); });
