@@ -301,6 +301,25 @@ body{
 }
 .fb-pin svg{width:12px;height:12px;}
 
+/* Count badge for a pin representing more than one note at the same L2 --
+   positioned relative to Leaflet's own icon wrapper (which the divIcon's
+   iconSize already sizes to match .fb-pin), not .fb-pin itself. */
+.fb-pin-count{
+  position:absolute;top:-6px;right:-6px;
+  min-width:16px;height:16px;padding:0 3px;border-radius:999px;
+  background:var(--surface);color:#7c5cff;border:2px solid #7c5cff;
+  font-size:10px;font-weight:800;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* One card per note, inside a grouped-pin's detail view (see
+   openFeedbackGroupDetail) -- .promo-head above them already carries the
+   "N notes" count badge, so no per-card numbering needed. */
+.fb-note-card{padding:10px 0;border-bottom:1px dashed var(--border);}
+.fb-note-card:last-child{border-bottom:none;}
+.fb-note-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;}
+.fb-note-text{font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.5;}
+
 /* Feedback mini-form, inside the L2 detail panel -- every allow-listed role
    gets this (submitting isn't leader-gated, only reading others' notes is). */
 .fb-form{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
@@ -1462,17 +1481,31 @@ function renderFeedback(){
   // known point; the submitter's GPS is still shown (see openFeedbackDetail)
   // as a distance check, but using it as the pin itself would scatter pins
   // wherever a phone happened to get reception, not where the L2 actually is.
-  feedbackPinLayer.clearLayers();
+  // One pin per L2, not one per note -- several notes on the same L2 would
+  // otherwise land as separate markers stacked exactly on top of each other
+  // (same l2Lat/l2Lon), leaving every note but the topmost unclickable on
+  // the map. The sidebar list above stays one row per note either way; only
+  // the map pins are grouped, with a count badge when there's more than one.
+  const byL2 = new Map();
   idx.forEach(f=>{
     if(f.l2Lat==null || f.l2Lon==null) return;
-    const marker = L.marker([f.l2Lat, f.l2Lon], {
+    if(!byL2.has(f.l2id)) byL2.set(f.l2id, []);
+    byL2.get(f.l2id).push(f);
+  });
+
+  feedbackPinLayer.clearLayers();
+  byL2.forEach((group, l2id)=>{
+    group.sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp)); // most recent first
+    const first = group[0];
+    const countBadge = group.length > 1 ? `<div class="fb-pin-count">${group.length}</div>` : '';
+    const marker = L.marker([first.l2Lat, first.l2Lon], {
       icon: L.divIcon({
-        html: `<div class="fb-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>`,
+        html: `<div class="fb-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>${countBadge}`,
         className:'fb-pin-outer', iconSize:[22,22], iconAnchor:[11,22]
       })
     });
-    marker.bindTooltip(f.l2id, { direction:'top', offset:[0,-18], className:'l2-tooltip' });
-    marker.on('click', ()=> openFeedbackDetail(f));
+    marker.bindTooltip(`${l2id}${group.length>1 ? ` (${group.length} notes)` : ''}`, { direction:'top', offset:[0,-18], className:'l2-tooltip' });
+    marker.on('click', ()=> group.length>1 ? openFeedbackGroupDetail(l2id, group) : openFeedbackDetail(group[0]));
     feedbackPinLayer.addLayer(marker);
   });
 }
@@ -1511,6 +1544,50 @@ function openFeedbackDetail(f){
 
   if(f.l2Lat!=null && f.l2Lon!=null){
     const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
+    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
+    else map.flyTo(target, targetZoom, {duration:0.5});
+  }
+}
+
+/* Tapping a grouped map pin (more than one note at the same L2) -- every
+   note in the group, most recent first, each with its own submitter/when/
+   distance, rather than picking just one and hiding the rest. */
+function openFeedbackGroupDetail(l2id, group){
+  const panelEl = document.getElementById('detailPanel');
+  const first = group[0];
+  const discPct = discountForL2_(l2id);
+
+  const cards = group.map(f=>{
+    const when = new Date(f.timestamp);
+    const whenLabel = isNaN(when.getTime()) ? f.timestamp : when.toLocaleString('en-US', {dateStyle:'medium', timeStyle:'short'});
+    const dist = haversineMeters(f.l2Lat, f.l2Lon, f.lat, f.lon);
+    const distLabel = dist==null ? 'unknown' : dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+    return `<div class="fb-note-card">
+      <div class="fb-note-meta"><b>${escapeHtml(f.submitterEmail)}</b> &middot; ${whenLabel} &middot; ${distLabel} from L2</div>
+      <div class="fb-note-text">${escapeHtml(f.notes)}</div>
+    </div>`;
+  }).join('');
+
+  panelEl.innerHTML = `
+    <div class="detail-head">
+      <div>
+        ${first.village ? `<div class="detail-village">${escapeHtml(first.village)}</div>` : ''}
+        <div class="detail-id">${escapeHtml(l2id)}${discPct!=null ? ` <span class="badge">${discPct}% off</span>` : ''}</div>
+        <div class="detail-loc">${escapeHtml(first.adm3)}, ${escapeHtml(first.adm2)} &middot; Nonthaburi</div>
+      </div>
+      <button class="detail-close" id="detailCloseBtn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="detail-body">
+      <div class="promo-head"><h3>Field notes</h3><span class="badge">${group.length}</span></div>
+      ${cards}
+    </div>`;
+  panelEl.classList.add('open');
+  document.getElementById('detailCloseBtn').onclick = closeDetail;
+
+  if(first.l2Lat!=null && first.l2Lon!=null){
+    const target = [first.l2Lat, first.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
     if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
     else map.flyTo(target, targetZoom, {duration:0.5});
   }
