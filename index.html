@@ -1231,12 +1231,13 @@ function setMobileView(view){
   const returningToMap = view==='map' && bodyRow.classList.contains('mobile-view-list');
   bodyRow.classList.toggle('mobile-view-list', view==='list');
   bodyRow.classList.toggle('mobile-view-map', view==='map');
-  // The Feedback tab is a MODE, not a pane like Map/List -- while it's
-  // active, it alone shows as active regardless of which pane (map or
-  // list) is currently on screen underneath it.
+  // Feedback is a MODE (which sidebar/map layer shows), independent of
+  // which PANE (map or list) is on screen -- Map/List stay highlighted by
+  // pane regardless of mode, Feedback is highlighted by mode regardless of
+  // pane, so a leader viewing feedback pins full-screen on the map still
+  // sees both "Map" and "Feedback" lit up.
   document.querySelectorAll('#mobileTabbar button').forEach(b=>{
-    const isFeedbackBtn = b.dataset.view === 'feedback';
-    b.classList.toggle('active', appMode==='feedback' ? isFeedbackBtn : (!isFeedbackBtn && b.dataset.view===view));
+    b.classList.toggle('active', b.dataset.view==='feedback' ? appMode==='feedback' : b.dataset.view===view);
   });
   // Synchronous, not setTimeout(0): reading layout right after the display:none
   // -> flex class swap above forces the browser to lay it out NOW, which is
@@ -1606,11 +1607,18 @@ function initApp(){
   document.getElementById('mobileTabbar').addEventListener('click',(e)=>{
     const btn = e.target.closest('button'); if(!btn) return;
     if(btn.dataset.view === 'feedback'){
-      setAppMode(appMode === 'feedback' ? 'discount' : 'feedback');
-      setMobileView(appMode === 'feedback' ? 'list' : 'map');
+      // Toggles the MODE only -- Map/List below are the PANE, left alone
+      // here so a leader can still flip between the feedback list and the
+      // feedback pins on the map without this button fighting that choice.
+      // Entering feedback mode for the first time in this visit defaults to
+      // the list (the dashboard itself); leaving it defaults back to the map.
+      const next = appMode === 'feedback' ? 'discount' : 'feedback';
+      setAppMode(next);
+      setMobileView(next === 'feedback' ? 'list' : 'map');
       return;
     }
-    if(appMode !== 'discount') setAppMode('discount');
+    // Pane-only -- does not touch appMode, so tapping Map while a leader is
+    // in feedback mode shows feedback pins full-screen, not the discount map.
     setMobileView(btn.dataset.view);
   });
 
