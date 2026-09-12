@@ -1445,10 +1445,15 @@ function renderFeedback(){
     }).join('');
   }
 
+  // Pinned at the L2's own recorded location, not the submitter's GPS fix --
+  // a feedback pin should answer "which L2 got a note," which is a fixed,
+  // known point; the submitter's GPS is still shown (see openFeedbackDetail)
+  // as a distance check, but using it as the pin itself would scatter pins
+  // wherever a phone happened to get reception, not where the L2 actually is.
   feedbackPinLayer.clearLayers();
   idx.forEach(f=>{
-    if(f.lat==null || f.lon==null) return;
-    const marker = L.marker([f.lat, f.lon], {
+    if(f.l2Lat==null || f.l2Lon==null) return;
+    const marker = L.marker([f.l2Lat, f.l2Lon], {
       icon: L.divIcon({
         html: `<div class="fb-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>`,
         className:'fb-pin-outer', iconSize:[22,22], iconAnchor:[11,22]
@@ -1491,8 +1496,8 @@ function openFeedbackDetail(f){
   panelEl.classList.add('open');
   document.getElementById('detailCloseBtn').onclick = closeDetail;
 
-  if(f.lat!=null && f.lon!=null){
-    const target = [f.lat, f.lon], targetZoom = Math.max(map.getZoom(), 15);
+  if(f.l2Lat!=null && f.l2Lon!=null){
+    const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
     if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
     else map.flyTo(target, targetZoom, {duration:0.5});
   }
