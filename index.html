@@ -187,16 +187,6 @@ body{
 }
 .feedback-toggle:hover{color:var(--text);background:var(--surface-3);}
 .feedback-toggle.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
-
-/* Unread-since-last-visit count, on both the desktop toggle and the mobile
-   tab -- hidden while zero (see updateFeedbackBadge) or while that view is
-   already open (nothing to flag once you're looking at it). */
-.fb-count-badge{
-  min-width:16px;height:16px;padding:0 4px;border-radius:999px;
-  background:#e0453c;color:#fff;font-size:10px;font-weight:800;line-height:16px;
-  text-align:center;
-}
-.feedback-toggle.active .fb-count-badge{background:var(--accent-ink);color:var(--accent);}
 .theme-toggle{
   width:34px;height:34px;flex:0 0 34px;border-radius:999px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text-muted);cursor:pointer;
@@ -550,7 +540,6 @@ table.promo-table td.special{font-weight:700;}
 }
 .mobile-tabbar button.active{background:var(--accent);color:var(--accent-ink);}
 .mobile-tabbar svg{width:15px;height:15px;}
-.mobile-tabbar button.active .fb-count-badge{background:var(--accent-ink);color:var(--accent);}
 /* Three labeled buttons (leader/subordinate) instead of two need less
    padding each to keep the whole bar from crowding a narrow phone width. */
 .mobile-tabbar:has(#mobileFeedbackTab:not([hidden])) button{padding:10px 14px;}
@@ -628,7 +617,6 @@ table.promo-table td.special{font-weight:700;}
     <button class="feedback-toggle" id="feedbackToggle" title="View field feedback" aria-label="View field feedback" hidden>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
       <span id="feedbackToggleLabel">Feedback</span>
-      <span class="fb-count-badge" id="feedbackBadge" hidden>0</span>
     </button>
     <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
@@ -735,7 +723,6 @@ table.promo-table td.special{font-weight:700;}
     <button data-view="feedback" id="mobileFeedbackTab" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
       <span id="mobileFeedbackLabel">Feedback</span>
-      <span class="fb-count-badge" id="mobileFeedbackBadge" hidden>0</span>
     </button>
   </div>
 </div>
@@ -1424,14 +1411,18 @@ function onLocateClick(){
   );
 }
 
-/* ===== leader feedback dashboard — flat across every subordinate, not
-   scoped to a sub-team, same as the plan behind this feature calls for.
-   Fetched lazily: only issued the first time a leader actually opens the
-   Feedback view, not eagerly at sign-in (a leader who never opens it costs
-   nothing extra). feedbackLoaded is flipped back to false after a
-   successful submitFeedback call (see submitFeedbackFor) so a leader who
+/* ===== feedback dashboard -- every submission for a leader (flat across
+   every subordinate, not scoped to a sub-team), just your own for a
+   subordinate. Fetched lazily: only issued the first time the view is
+   actually opened, not eagerly at sign-in -- a second Apps Script round
+   trip added right after myL2Data was tried once and measurably hurt
+   initial load time/consistency (Apps Script's own per-call latency is
+   the dominant, unpredictable cost here, not data volume -- see Pak Kret
+   Territory Explorer's getValuesBatch for the sibling-project lesson this
+   reverted back to). feedbackLoaded is flipped back to false after a
+   successful submitFeedback call (see submitFeedbackFor) so a session that
    already has the dashboard open sees a refetch rather than a stale list
-   next time they revisit it. ===== */
+   next time it's revisited. ===== */
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -1469,26 +1460,6 @@ function discountForL2_(l2id){
 const fbState = { dist:'all', village:'all', submitter:'all', days:'all', q:'', sort:'new' };
 const FB_NOTES_MAXLEN = 500;
 
-/* "Seen" is tracked as a plain timestamp (ms), persisted per-browser --
-   anything submitted after this counts toward the unread badge on the
-   Feedback/My Notes button. Bumped to now() whenever that view is actually
-   opened (see setAppMode), not on every fetch, so a background refresh
-   alone never silently clears the badge. */
-let feedbackLastSeen = 0;
-try{ feedbackLastSeen = +(localStorage.getItem('l2map-feedback-lastseen')) || 0; }catch(e){}
-
-function updateFeedbackBadge(){
-  const unread = FEEDBACK.filter(f=>{
-    const t = new Date(f.timestamp).getTime();
-    return !isNaN(t) && t > feedbackLastSeen;
-  }).length;
-  [document.getElementById('feedbackBadge'), document.getElementById('mobileFeedbackBadge')].forEach(b=>{
-    if(!b) return;
-    b.hidden = unread===0 || appMode==='feedback';
-    b.textContent = unread > 99 ? '99+' : String(unread);
-  });
-}
-
 /* Shown the moment a leader/subordinate opens a view that has no data yet
    (first open this session, or a post-submit refetch) -- otherwise the
    stat tiles and list both sit empty for the length of the fetch, which
@@ -1521,7 +1492,6 @@ async function fetchFeedback(){
     }
     FEEDBACK = data.feedback || [];
     feedbackLoaded = true;
-    updateFeedbackBadge();
     populateFeedbackFilters();
     if(appMode==='feedback') renderFeedback();
   }catch(e){
@@ -1773,13 +1743,6 @@ function setAppMode(mode){
     map.removeLayer(pinLayer);
     if(!map.hasLayer(feedbackPinLayer)) map.addLayer(feedbackPinLayer);
     if(!feedbackLoaded) fetchFeedback(); else renderFeedback();
-    // Bumped to now, not to the newest feedback timestamp, so anything
-    // that arrives between this exact moment and the next visit still
-    // counts as unread next time -- clears the badge for what's already
-    // been seen, nothing more.
-    feedbackLastSeen = Date.now();
-    try{ localStorage.setItem('l2map-feedback-lastseen', String(feedbackLastSeen)); }catch(e){}
-    updateFeedbackBadge();
   } else {
     map.removeLayer(feedbackPinLayer);
     if(!map.hasLayer(pinLayer)) map.addLayer(pinLayer);
@@ -1915,12 +1878,6 @@ function initApp(){
 
   render();
   appInitialized = true;
-
-  // Fetched once, quietly, right after sign-in -- not just on first open --
-  // purely so the unread-since-last-visit badge has something to compare
-  // against before anyone's actually looked. Harmless if it's never opened
-  // this session: one extra request, no UI drawn from it until then.
-  fetchFeedback();
 }
 
 /* ===== Google Sign-In =====

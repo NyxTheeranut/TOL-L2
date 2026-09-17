@@ -158,9 +158,13 @@ range, plus submitter for leaders only — pointless once a subordinate's
 list is already just themselves), a searchable/sortable list, and those
 notes' locations plotted on the map as distinct purple pins, grouped into
 one pin per L2 with a count badge if it's got more than one note. It's
-fetched once quietly right after sign-in (so an unread-since-last-visit
-count can show on the button before anyone's opened it) and again on
-demand if it's gone stale (e.g. right after submitting a new note).
+fetched lazily, only the first time this view is actually opened, not
+eagerly at sign-in — an eager fetch was tried and reverted; it added a
+second Apps Script round trip right after `myL2Data` on every load, and
+Apps Script's own per-call latency is real and unpredictable enough that
+this measurably hurt initial load time and consistency, independent of
+how much data was actually being fetched. Refetched again on demand if
+it's gone stale (e.g. right after submitting a new note).
 
 ## Local testing
 
