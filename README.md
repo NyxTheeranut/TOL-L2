@@ -8,12 +8,13 @@ Anyone signed in with an allow-listed Google account sees the same full
 discount dataset — the page itself ships with no discount data at all; it's
 fetched after sign-in.
 
-On top of that, field reps ("subordinates") can write a free-text note about
-an L2 they've visited in person, tagged to the L2/village with their GPS
-location captured at submission time. A second role ("leader") can review
-every submitted note — across all subordinates, not scoped to a sub-team —
-in a lightweight Feedback dashboard (stat tiles, filters, a list, and the
-note locations plotted on the map). See "Roles and feedback" below.
+On top of that, anyone signed in can write a free-text note about an L2
+they've visited in person, tagged to the L2/village with their GPS location
+captured at submission time. A lightweight Feedback dashboard (stat tiles,
+filters, a searchable/sortable list, and the note locations plotted on the
+map) shows those back — a "leader" role sees every submission across every
+subordinate, flat, not scoped to a sub-team; everyone else sees just their
+own. See "Roles and feedback" below.
 
 ## How it fits together
 
@@ -146,12 +147,20 @@ location + accuracy captured at the moment of submission — alongside that
 L2's own recorded lat/lon, so the Feedback dashboard can show the distance
 between "where the L2 actually is" and "where this note was written from."
 
-Leaders get a "Feedback" entry (topbar button on desktop, a third tab on
-mobile) that isn't shown to subordinates at all. It opens a dashboard with
-summary stat tiles, filters (village / submitter / date range), a list of
-every note across every subordinate (flat — not scoped to any team), and
-those notes' locations plotted on the map as distinct purple pins. It's
-fetched lazily, the first time a leader actually opens it, not at sign-in.
+Everyone gets a "Feedback" entry (topbar button on desktop, a third tab on
+mobile) — what it shows depends on role. A leader sees every submission
+across every subordinate (flat — not scoped to any team, via the
+`getFeedback` action). A subordinate sees only their own past submissions
+(via `myFeedback`, filtered server-side by their own verified email), so
+they can double-check what they've already reported. Either way it's the
+same dashboard: summary stat tiles, filters (village / district / date
+range, plus submitter for leaders only — pointless once a subordinate's
+list is already just themselves), a searchable/sortable list, and those
+notes' locations plotted on the map as distinct purple pins, grouped into
+one pin per L2 with a count badge if it's got more than one note. It's
+fetched once quietly right after sign-in (so an unread-since-last-visit
+count can show on the button before anyone's opened it) and again on
+demand if it's gone stale (e.g. right after submitting a new note).
 
 ## Local testing
 
@@ -169,11 +178,15 @@ and `file://` isn't one you can add.
   in it, then checks that email is a row in the Users tab.
 - The L2 points/discount dataset itself has no per-person scoping — every
   allow-listed viewer gets the same full dataset there. Feedback is the one
-  place that does get scoped: `getFeedback` checks the signed-in user's
-  `role` in the Users tab and refuses (`forbidden`) anyone who isn't a
-  `leader`, even if they call the action directly rather than through the
-  page's UI. `submitFeedback` itself is *not* role-gated — any allow-listed
-  user, leader or subordinate, can write a note.
+  place that does get scoped, two different ways: `getFeedback` checks the
+  signed-in user's `role` in the Users tab and refuses (`forbidden`) anyone
+  who isn't a `leader`, even if they call the action directly rather than
+  through the page's UI; `myFeedback` isn't role-gated (any allow-listed
+  user can call it) but filters the result to rows whose `submitterEmail`
+  matches the caller's own verified email server-side, so a subordinate can
+  never get someone else's notes back through it no matter what the page's
+  UI does or doesn't show. `submitFeedback` itself is *not* role-gated —
+  any allow-listed user, leader or subordinate, can write a note.
 - `syncL2Data` can't go through the sign-in check at all — it's not a person
   signing in, it's `update_l2_sheet.py` running on your own machine — so
   it's gated by `SYNC_SECRET` instead (see step 2 and step 5 above). This

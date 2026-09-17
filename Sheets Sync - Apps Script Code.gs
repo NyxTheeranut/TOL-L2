@@ -48,6 +48,10 @@
  *   getFeedback    -> Users-tab membership AND role === "leader". A
  *                    subordinate calling this directly gets an explicit
  *                    "forbidden", not a silently empty list.
+ *   myFeedback     -> Users-tab membership only, same as submitFeedback --
+ *                    any allow-listed viewer can look back at their OWN
+ *                    past submissions (filtered server-side by email),
+ *                    leader or subordinate.
  *   syncL2Data     -> not a person signing in at all (it's update_l2_sheet.py
  *                    on your own machine), so it can't go through the Users
  *                    tab -- gated by a shared SYNC_SECRET instead.
@@ -103,6 +107,10 @@ function doPost(e) {
 
     if (body.action === "getFeedback") {
       return jsonResponse_(getFeedback_(body.idToken));
+    }
+
+    if (body.action === "myFeedback") {
+      return jsonResponse_(myFeedback_(body.idToken));
     }
 
     if (body.action === "syncL2Data") {
@@ -374,6 +382,26 @@ function getFeedback_(idToken) {
     return { ok: false, error: "forbidden", message: "Only leaders can view feedback." };
   }
   return { ok: true, feedback: readFeedback_() };
+}
+
+// Not role-gated (unlike getFeedback_) -- any allow-listed user can look
+// back at their OWN past submissions, leader or subordinate. Filters
+// readFeedback_'s full list down to rows this caller submitted; a
+// subordinate never sees anyone else's notes through this path.
+function myFeedback_(idToken) {
+  var email = verifyIdToken_(idToken);
+  if (!email) return { ok: false, error: "not_signed_in" };
+  if (!isAllowedUser_(email)) {
+    return {
+      ok: false,
+      error: "no_access",
+      message: "This Google account (" + email + ") isn't set up yet. Ask an admin to add it to the Users tab.",
+    };
+  }
+  var mine = readFeedback_().filter(function (f) {
+    return String(f.submitterEmail).trim().toLowerCase() === email.toLowerCase();
+  });
+  return { ok: true, feedback: mine };
 }
 
 function appendFeedbackRow_(f) {

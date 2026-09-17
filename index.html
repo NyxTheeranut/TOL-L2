@@ -187,6 +187,16 @@ body{
 }
 .feedback-toggle:hover{color:var(--text);background:var(--surface-3);}
 .feedback-toggle.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+
+/* Unread-since-last-visit count, on both the desktop toggle and the mobile
+   tab -- hidden while zero (see updateFeedbackBadge) or while that view is
+   already open (nothing to flag once you're looking at it). */
+.fb-count-badge{
+  min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+  background:#e0453c;color:#fff;font-size:10px;font-weight:800;line-height:16px;
+  text-align:center;
+}
+.feedback-toggle.active .fb-count-badge{background:var(--accent-ink);color:var(--accent);}
 .theme-toggle{
   width:34px;height:34px;flex:0 0 34px;border-radius:999px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text-muted);cursor:pointer;
@@ -348,6 +358,27 @@ body{
   width:100%;justify-content:center;margin:10px 0 0;cursor:pointer;font:inherit;
 }
 .fb-form button.gmaps-btn:disabled{opacity:.6;cursor:default;}
+.fb-form-caption{font-size:11px;color:var(--text-faint);line-height:1.5;margin-top:2px;}
+.fb-form-counter{font-size:10.5px;color:var(--text-faint);text-align:right;margin-top:3px;}
+
+/* Note preview line in the feedback list -- one clamped line, not the full
+   text (that's what opening the row is for), so a leader can still scan
+   many rows at a glance. */
+.stop-note-preview{
+  font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* Flags a distance/accuracy reading that undermines "was this really
+   written on-site" -- the whole reason that GPS gets captured at all. Plain
+   text next to a plain number is easy to skim past; color makes it pop. */
+.warn{color:#e0453c;}
+
+/* Lightweight placeholder while fetchFeedback()/myFeedback() is in flight,
+   so a leader/subordinate opening the view for the first time sees
+   "loading," not a blank dashboard that reads as "there's nothing here." */
+.stat-tile.skeleton{opacity:.5;}
+.stat-tile.skeleton .val{color:var(--text-faint);}
 
 .app-toast{
   position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:2000;
@@ -519,6 +550,10 @@ table.promo-table td.special{font-weight:700;}
 }
 .mobile-tabbar button.active{background:var(--accent);color:var(--accent-ink);}
 .mobile-tabbar svg{width:15px;height:15px;}
+.mobile-tabbar button.active .fb-count-badge{background:var(--accent-ink);color:var(--accent);}
+/* Three labeled buttons (leader/subordinate) instead of two need less
+   padding each to keep the whole bar from crowding a narrow phone width. */
+.mobile-tabbar:has(#mobileFeedbackTab:not([hidden])) button{padding:10px 14px;}
 
 @media (max-width:860px){
   .sidebar{width:290px;flex-basis:290px;}
@@ -592,7 +627,8 @@ table.promo-table td.special{font-weight:700;}
     <div class="topbar-stat"><b id="statShown">0</b><span>/ <b id="statTotal">0</b> L2 with an active discount</span></div>
     <button class="feedback-toggle" id="feedbackToggle" title="View field feedback" aria-label="View field feedback" hidden>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
-      <span>Feedback</span>
+      <span id="feedbackToggleLabel">Feedback</span>
+      <span class="fb-count-badge" id="feedbackBadge" hidden>0</span>
     </button>
     <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
@@ -659,6 +695,11 @@ table.promo-table td.special{font-weight:700;}
       </div>
       <div class="list-summary mode-feedback">
         <span>Showing <b id="fbListCount">0</b> notes</span>
+        <select id="fbSortSelect">
+          <option value="new">Sort: newest first</option>
+          <option value="old">Sort: oldest first</option>
+          <option value="village">Sort: village</option>
+        </select>
       </div>
       <div class="stop-list mode-feedback" id="feedbackList"></div>
     </div>
@@ -693,7 +734,8 @@ table.promo-table td.special{font-weight:700;}
     </button>
     <button data-view="feedback" id="mobileFeedbackTab" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
-      Feedback
+      <span id="mobileFeedbackLabel">Feedback</span>
+      <span class="fb-count-badge" id="mobileFeedbackBadge" hidden>0</span>
     </button>
   </div>
 </div>
@@ -715,8 +757,10 @@ let userRole = 'subordinate';
 let currentIdToken = null;
 let FEEDBACK = [];
 let feedbackLoaded = false;
-/* 'discount' (the map everyone gets) or 'feedback' (leader-only dashboard) --
-   see setAppMode, below fetchFeedback/renderFeedback. */
+let feedbackLoading = false;
+/* 'discount' (the map everyone gets) or 'feedback' (the notes dashboard --
+   every submission for a leader, just your own for a subordinate) -- see
+   setAppMode, below fetchFeedback/renderFeedback. */
 let appMode = 'discount';
 
 function findCondition(arch, arpaGroup, port, nad){
@@ -1196,13 +1240,18 @@ function openDetail(d){
       <div class="detail-foot">Prices in THB/month, 24-month contract. Looked up from the Condition sheet by Archetype (${d.arch}) &times; ARPA band (${arpaGroupLabel(d.arpaGroup)}) &times; Port group (${portLabel(d.port)}). Synced live from a Google Sheet — see the repo README.</div>
       <div class="fb-form">
         <div class="promo-head"><h3>Add field feedback</h3></div>
-        <textarea id="fbNotesInput" placeholder="What did you see on this visit?" rows="3"></textarea>
+        <div class="fb-form-caption">Visible to your team leads, along with your location at the time you submit.</div>
+        <textarea id="fbNotesInput" placeholder="What did you see on this visit?" rows="3" maxlength="${FB_NOTES_MAXLEN}"></textarea>
+        <div class="fb-form-counter" id="fbNotesCounter">0 / ${FB_NOTES_MAXLEN}</div>
         <button class="gmaps-btn" id="fbSubmitBtn" type="button">Submit feedback</button>
       </div>
     </div>`;
   panelEl.classList.add('open');
   document.getElementById('detailCloseBtn').onclick = closeDetail;
   document.getElementById('fbSubmitBtn').onclick = ()=> submitFeedbackFor(d);
+  const notesInput = document.getElementById('fbNotesInput');
+  const counterEl = document.getElementById('fbNotesCounter');
+  notesInput.addEventListener('input', ()=>{ counterEl.textContent = `${notesInput.value.length} / ${FB_NOTES_MAXLEN}`; });
 }
 
 /* One-shot GPS read (not watchPosition, unlike LocateControl -- a single
@@ -1232,7 +1281,9 @@ function submitFeedbackFor(d){
         if(data.ok){
           showToast('Feedback submitted.');
           textarea.value = '';
-          feedbackLoaded = false; // stale now -- next time a leader opens the dashboard, refetch
+          const counterEl = document.getElementById('fbNotesCounter');
+          if(counterEl) counterEl.textContent = `0 / ${FB_NOTES_MAXLEN}`;
+          feedbackLoaded = false; // stale now -- next time the Feedback/My Notes view opens, refetch
         } else {
           showToast(data.message || ('Could not submit: ' + (data.error || 'unknown error')));
         }
@@ -1398,6 +1449,13 @@ function haversineMeters(lat1, lon1, lat2, lon2){
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+// Thresholds for flagging "this doesn't look like it was written on-site" --
+// the whole reason the GPS fix gets captured at all. Loose enough that
+// normal reception-driven drift (tens of meters) doesn't false-flag, tight
+// enough that a note from genuinely somewhere else still stands out.
+const FB_DIST_WARN_M = 300;
+const FB_ACCURACY_WARN_M = 100;
+
 // Feedback rows don't carry their own discount -- they're tagged with an
 // l2id, which is looked up live against DATA (the same lookup the discount
 // map itself already did in initApp). Returns null if that L2 no longer has
@@ -1408,27 +1466,68 @@ function discountForL2_(l2id){
   return d ? Math.round(d.cond.discPct*100) : null;
 }
 
-const fbState = { dist:'all', village:'all', submitter:'all', days:'all' };
+const fbState = { dist:'all', village:'all', submitter:'all', days:'all', q:'', sort:'new' };
+const FB_NOTES_MAXLEN = 500;
 
+/* "Seen" is tracked as a plain timestamp (ms), persisted per-browser --
+   anything submitted after this counts toward the unread badge on the
+   Feedback/My Notes button. Bumped to now() whenever that view is actually
+   opened (see setAppMode), not on every fetch, so a background refresh
+   alone never silently clears the badge. */
+let feedbackLastSeen = 0;
+try{ feedbackLastSeen = +(localStorage.getItem('l2map-feedback-lastseen')) || 0; }catch(e){}
+
+function updateFeedbackBadge(){
+  const unread = FEEDBACK.filter(f=>{
+    const t = new Date(f.timestamp).getTime();
+    return !isNaN(t) && t > feedbackLastSeen;
+  }).length;
+  [document.getElementById('feedbackBadge'), document.getElementById('mobileFeedbackBadge')].forEach(b=>{
+    if(!b) return;
+    b.hidden = unread===0 || appMode==='feedback';
+    b.textContent = unread > 99 ? '99+' : String(unread);
+  });
+}
+
+/* Shown the moment a leader/subordinate opens a view that has no data yet
+   (first open this session, or a post-submit refetch) -- otherwise the
+   stat tiles and list both sit empty for the length of the fetch, which
+   reads as "there's nothing here" rather than "still loading." */
+function showFeedbackLoadingSkeleton(){
+  document.getElementById('feedbackStats').innerHTML = ['Total notes','Villages covered','Submitters','Last 7 days']
+    .map(lbl=>`<div class="stat-tile skeleton"><div class="lbl">${lbl}</div><div class="val">&nbsp;</div></div>`).join('');
+  document.getElementById('feedbackList').innerHTML = `<div class="empty-note">Loading feedback&hellip;</div>`;
+}
+
+/* Leaders get every submission (getFeedback); subordinates get only their
+   own (myFeedback) -- same button, same view, different server-side scope.
+   Fetched once proactively right after sign-in (not just on first open) so
+   the unread badge has something to compare against before anyone's
+   actually opened the view -- see the call in onGoogleSignIn/initApp. */
 async function fetchFeedback(){
   if(!currentIdToken) return;
+  feedbackLoading = true;
+  if(appMode==='feedback' && !feedbackLoaded) showFeedbackLoadingSkeleton();
   try{
     const res = await fetch(DEFAULT_SYNC_URL, {
       method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action:'getFeedback', idToken: currentIdToken }),
+      body: JSON.stringify({ action: userRole==='leader' ? 'getFeedback' : 'myFeedback', idToken: currentIdToken }),
     });
     const data = await res.json();
+    feedbackLoading = false;
     if(!data.ok){
-      showToast(data.message || 'Could not load feedback.');
+      if(appMode==='feedback') showToast(data.message || 'Could not load feedback.');
       return;
     }
     FEEDBACK = data.feedback || [];
     feedbackLoaded = true;
+    updateFeedbackBadge();
     populateFeedbackFilters();
-    renderFeedback();
+    if(appMode==='feedback') renderFeedback();
   }catch(e){
-    showToast('Could not reach the server to load feedback.');
-    console.warn('getFeedback fetch failed', e);
+    feedbackLoading = false;
+    if(appMode==='feedback') showToast('Could not reach the server to load feedback.');
+    console.warn('getFeedback/myFeedback fetch failed', e);
   }
 }
 
@@ -1445,7 +1544,11 @@ function populateFeedbackFilters(){
   villageSel.innerHTML = `<option value="all">All villages</option>` +
     villages.map(v=>`<option value="${escapeHtml(v)}"${v===fbState.village?' selected':''}>${escapeHtml(v)}</option>`).join('');
 
+  // A subordinate's feedback is already scoped to just their own -- a
+  // submitter filter (and the "Submitters" stat) would always show exactly
+  // one option, themselves, so it's hidden rather than shown as dead weight.
   const submitterSel = document.getElementById('fbSubmitterSelect');
+  submitterSel.hidden = userRole !== 'leader';
   fbState.submitter = submitters.includes(fbState.submitter) ? fbState.submitter : 'all';
   submitterSel.innerHTML = `<option value="all">All submitters</option>` +
     submitters.map(v=>`<option value="${escapeHtml(v)}"${v===fbState.submitter?' selected':''}>${escapeHtml(v)}</option>`).join('');
@@ -1453,7 +1556,8 @@ function populateFeedbackFilters(){
 
 function filteredFeedback(){
   const now = Date.now();
-  return FEEDBACK.filter(f=>{
+  const q = fbState.q.trim().toLowerCase();
+  let out = FEEDBACK.filter(f=>{
     if(fbState.dist!=='all' && f.adm2!==fbState.dist) return false;
     if(fbState.village!=='all' && f.village!==fbState.village) return false;
     if(fbState.submitter!=='all' && f.submitterEmail!==fbState.submitter) return false;
@@ -1461,8 +1565,18 @@ function filteredFeedback(){
       const t = new Date(f.timestamp).getTime();
       if(isNaN(t) || (now - t) > (+fbState.days)*86400000) return false;
     }
+    if(q){
+      const haystack = [f.notes, f.l2id, f.village, f.submitterEmail].filter(Boolean).join(' ').toLowerCase();
+      if(haystack.indexOf(q) === -1) return false;
+    }
     return true;
   });
+  out.sort((a,b)=>{
+    if(fbState.sort==='village') return (a.village||'').localeCompare(b.village||'');
+    const ta = new Date(a.timestamp).getTime(), tb = new Date(b.timestamp).getTime();
+    return fbState.sort==='old' ? ta-tb : tb-ta;
+  });
+  return out;
 }
 
 function renderFeedback(){
@@ -1474,10 +1588,15 @@ function renderFeedback(){
   const submitterCount = new Set(FEEDBACK.map(f=>f.submitterEmail).filter(Boolean)).size;
   const weekAgo = Date.now() - 7*86400000;
   const last7 = FEEDBACK.filter(f=> new Date(f.timestamp).getTime() >= weekAgo).length;
+  // "Submitters" is always exactly 1 (yourself) on the my-notes view a
+  // subordinate gets -- skipped rather than shown as a dead-obvious tile.
+  const submitterTile = userRole==='leader'
+    ? `<div class="stat-tile"><div class="lbl">Submitters</div><div class="val tnum">${submitterCount.toLocaleString('en-US')}</div></div>`
+    : '';
   document.getElementById('feedbackStats').innerHTML = `
     <div class="stat-tile"><div class="lbl">Total notes</div><div class="val tnum">${FEEDBACK.length.toLocaleString('en-US')}</div></div>
     <div class="stat-tile"><div class="lbl">Villages covered</div><div class="val tnum">${villageCount.toLocaleString('en-US')}</div></div>
-    <div class="stat-tile"><div class="lbl">Submitters</div><div class="val tnum">${submitterCount.toLocaleString('en-US')}</div></div>
+    ${submitterTile}
     <div class="stat-tile"><div class="lbl">Last 7 days</div><div class="val tnum">${last7.toLocaleString('en-US')}</div></div>
   `;
 
@@ -1499,6 +1618,7 @@ function renderFeedback(){
           <div class="stop-id mono">${escapeHtml(f.l2id)}${discPct!=null ? ` <span class="badge">${discPct}% off</span>` : ''}</div>
           ${f.village ? `<div class="stop-village" title="${escapeHtml(f.village)}">${escapeHtml(f.village)}</div>` : ''}
           <div class="stop-loc">${escapeHtml(f.submitterEmail)} &middot; ${whenLabel}</div>
+          <div class="stop-note-preview" title="${escapeHtml(f.notes)}">${escapeHtml(f.notes)}</div>
         </div>
       </div>`;
     }).join('');
@@ -1544,6 +1664,8 @@ function openFeedbackDetail(f){
   const whenLabel = isNaN(when.getTime()) ? f.timestamp : when.toLocaleString('en-US', {dateStyle:'medium', timeStyle:'short'});
   const dist = haversineMeters(f.l2Lat, f.l2Lon, f.lat, f.lon);
   const distLabel = dist==null ? 'unknown' : dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+  const distWarn = dist!=null && dist > FB_DIST_WARN_M;
+  const accWarn = f.accuracy!=null && f.accuracy > FB_ACCURACY_WARN_M;
   const discPct = discountForL2_(f.l2id);
 
   panelEl.innerHTML = `
@@ -1561,8 +1683,8 @@ function openFeedbackDetail(f){
       <div class="stat-grid">
         <div class="stat-tile"><div class="lbl">Submitted by</div><div class="val">${escapeHtml(f.submitterEmail)}</div></div>
         <div class="stat-tile"><div class="lbl">When</div><div class="val">${whenLabel}</div></div>
-        <div class="stat-tile"><div class="lbl">Distance from L2</div><div class="val tnum">${distLabel}</div></div>
-        <div class="stat-tile"><div class="lbl">GPS accuracy</div><div class="val tnum">${f.accuracy!=null ? Math.round(f.accuracy)+' m' : 'unknown'}</div></div>
+        <div class="stat-tile"><div class="lbl">Distance from L2</div><div class="val tnum${distWarn?' warn':''}">${distLabel}</div></div>
+        <div class="stat-tile"><div class="lbl">GPS accuracy</div><div class="val tnum${accWarn?' warn':''}">${f.accuracy!=null ? Math.round(f.accuracy)+' m' : 'unknown'}</div></div>
       </div>
       <div class="promo-head"><h3>Field notes</h3></div>
       <div class="detail-foot" style="margin-top:0;padding-top:0;border-top:none;font-size:13px;color:var(--text);white-space:pre-wrap;">${escapeHtml(f.notes)}</div>
@@ -1590,8 +1712,9 @@ function openFeedbackGroupDetail(l2id, group){
     const whenLabel = isNaN(when.getTime()) ? f.timestamp : when.toLocaleString('en-US', {dateStyle:'medium', timeStyle:'short'});
     const dist = haversineMeters(f.l2Lat, f.l2Lon, f.lat, f.lon);
     const distLabel = dist==null ? 'unknown' : dist < 1000 ? `${Math.round(dist)} m` : `${(dist/1000).toFixed(1)} km`;
+    const distWarn = dist!=null && dist > FB_DIST_WARN_M;
     return `<div class="fb-note-card">
-      <div class="fb-note-meta"><b>${escapeHtml(f.submitterEmail)}</b> &middot; ${whenLabel} &middot; ${distLabel} from L2</div>
+      <div class="fb-note-meta"><b>${escapeHtml(f.submitterEmail)}</b> &middot; ${whenLabel} &middot; <span${distWarn?' class="warn"':''}>${distLabel} from L2</span></div>
       <div class="fb-note-text">${escapeHtml(f.notes)}</div>
     </div>`;
   }).join('');
@@ -1630,6 +1753,18 @@ function setAppMode(mode){
   document.getElementById('sidebarPanel').dataset.mode = mode;
   document.getElementById('feedbackToggle').classList.toggle('active', mode === 'feedback');
   closeDetail();
+
+  // The topbar/sidebar search boxes are shared between both modes -- reset
+  // them (and whichever query they were driving) on every switch, and
+  // repoint the placeholder at what they actually search now. Leaving a
+  // discount-mode query silently in place while looking at feedback (or
+  // vice versa) would look like it should still be filtering something.
+  const searchBoxes = [document.getElementById('searchInput'), document.getElementById('searchInputMobile')];
+  searchBoxes.forEach(b=> b.value = '');
+  const placeholder = mode === 'feedback' ? 'Search notes, L2 ID, or village…' : 'Search L2 ID, HPB No., or village…';
+  searchBoxes.forEach(b=> b.placeholder = placeholder);
+  if(mode === 'feedback') fbState.q = ''; else state.q = '';
+
   // District boundaries stay up in both modes -- the same dashed อำเภอ
   // outlines a leader gets on the discount map, just re-rendered to
   // highlight whichever district is filtered in whichever sidebar is
@@ -1638,6 +1773,13 @@ function setAppMode(mode){
     map.removeLayer(pinLayer);
     if(!map.hasLayer(feedbackPinLayer)) map.addLayer(feedbackPinLayer);
     if(!feedbackLoaded) fetchFeedback(); else renderFeedback();
+    // Bumped to now, not to the newest feedback timestamp, so anything
+    // that arrives between this exact moment and the next visit still
+    // counts as unread next time -- clears the badge for what's already
+    // been seen, nothing more.
+    feedbackLastSeen = Date.now();
+    try{ localStorage.setItem('l2map-feedback-lastseen', String(feedbackLastSeen)); }catch(e){}
+    updateFeedbackBadge();
   } else {
     map.removeLayer(feedbackPinLayer);
     if(!map.hasLayer(pinLayer)) map.addLayer(pinLayer);
@@ -1671,10 +1813,14 @@ function initApp(){
   // Not .addTo(map) -- only shown once setAppMode('feedback') switches to it.
   feedbackPinLayer = L.layerGroup();
 
-  if(userRole === 'leader'){
-    document.getElementById('feedbackToggle').hidden = false;
-    document.getElementById('mobileFeedbackTab').hidden = false;
-  }
+  // Everyone gets this now, not just leaders -- a leader sees every
+  // submission (getFeedback), a subordinate sees only their own past ones
+  // (myFeedback), same view either way, label adjusted to match.
+  document.getElementById('feedbackToggle').hidden = false;
+  document.getElementById('mobileFeedbackTab').hidden = false;
+  const fbLabel = userRole === 'leader' ? 'Feedback' : 'My Notes';
+  document.getElementById('feedbackToggleLabel').textContent = fbLabel;
+  document.getElementById('mobileFeedbackLabel').textContent = fbLabel;
 
   if(IS_TOUCH){
     // District boundaries (renderDistrictAreas, above) are also canvas-
@@ -1725,7 +1871,12 @@ function initApp(){
     box.addEventListener('input',(e)=>{
       searchBoxes.forEach(other=>{ if(other!==e.target) other.value = e.target.value; });
       clearTimeout(searchT);
-      searchT=setTimeout(()=>{ state.q=e.target.value.trim(); render(); },150);
+      searchT=setTimeout(()=>{
+        // Same boxes double as the feedback search once that mode is
+        // active (see setAppMode, which resets/repoints them on switch).
+        if(appMode === 'feedback'){ fbState.q=e.target.value.trim(); renderFeedback(); }
+        else { state.q=e.target.value.trim(); render(); }
+      },150);
     });
   });
 
@@ -1760,9 +1911,16 @@ function initApp(){
   document.getElementById('fbVillageSelect').addEventListener('change',(e)=>{ fbState.village=e.target.value; renderFeedback(); });
   document.getElementById('fbSubmitterSelect').addEventListener('change',(e)=>{ fbState.submitter=e.target.value; renderFeedback(); });
   document.getElementById('fbDateSelect').addEventListener('change',(e)=>{ fbState.days=e.target.value; renderFeedback(); });
+  document.getElementById('fbSortSelect').addEventListener('change',(e)=>{ fbState.sort=e.target.value; renderFeedback(); });
 
   render();
   appInitialized = true;
+
+  // Fetched once, quietly, right after sign-in -- not just on first open --
+  // purely so the unread-since-last-visit badge has something to compare
+  // against before anyone's actually looked. Harmless if it's never opened
+  // this session: one extra request, no UI drawn from it until then.
+  fetchFeedback();
 }
 
 /* ===== Google Sign-In =====
