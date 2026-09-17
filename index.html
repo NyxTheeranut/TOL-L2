@@ -1893,23 +1893,47 @@ function showLoginStatus(html, isError){
   el.classList.toggle('error', !!isError);
 }
 
+async function fetchMyL2Data_(idToken){
+  const res = await fetch(DEFAULT_SYNC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'myL2Data', idToken }),
+  });
+  return res.json();
+}
+
 async function onGoogleSignIn(response){
   const idToken = response.credential;
   document.getElementById('gsiButton').style.display = 'none';
   showLoginStatus('<div class="login-spinner"></div>', false);
   try{
-    const res = await fetch(DEFAULT_SYNC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'myL2Data', idToken }),
-    });
-    const data = await res.json();
+    let data = await fetchMyL2Data_(idToken);
+    // A successful response with zero points is never a real state -- this
+    // dataset always has some L2 with an active discount -- so it almost
+    // certainly means the read landed in the middle of update_l2_sheet.py
+    // rewriting the sheet, or hit a transient Apps Script hiccup (both seen
+    // in practice: a plain reload/retry fixed it). Retried a couple of
+    // times with a short pause instead of shown to the user as-is.
+    for(let attempt=1; data.ok && (data.points||[]).length===0 && attempt<=2; attempt++){
+      await new Promise(r=> setTimeout(r, 800*attempt));
+      data = await fetchMyL2Data_(idToken);
+    }
     if(!data.ok){
       document.getElementById('gsiButton').style.display = 'flex';
       showLoginStatus(
         data.message || ('Sign-in failed: ' + (data.error || 'unknown error')),
         true,
       );
+      return;
+    }
+    if((data.points||[]).length===0){
+      // Still empty after retrying -- initApp() below assumes at least one
+      // point (L.latLngBounds([]) throws "Bounds are not valid" out of
+      // fitBounds, which the catch block below would otherwise report as a
+      // misleading "could not reach the server", when the server answered
+      // fine, just with nothing in it). Its own clear message instead.
+      document.getElementById('gsiButton').style.display = 'flex';
+      showLoginStatus('No active-discount data found on the server right now. Try signing in again in a moment.', true);
       return;
     }
     DATA = data.points || [];

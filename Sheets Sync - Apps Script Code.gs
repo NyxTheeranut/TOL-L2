@@ -467,7 +467,6 @@ function writePointsSheet_(points) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("L2 Points");
   if (!sheet) sheet = ss.insertSheet("L2 Points");
-  sheet.clearContents();
   var rows = [L2_POINTS_HEADER];
   points.forEach(function (p) {
     rows.push([
@@ -476,12 +475,23 @@ function writePointsSheet_(points) {
       p.nad || "", p.adm2 || "", p.adm3 || "", p.village || "",
     ]);
   });
+  // Writes the new data into place BEFORE clearing anything -- clearContents()
+  // first (the previous order) leaves a real window where the sheet is
+  // genuinely empty, and a myL2Data request from someone signing in at that
+  // exact moment reads zero points back, indistinguishable from a real
+  // "no active discounts" state. Trimming only the leftover tail AFTER
+  // writing (if this run has fewer rows than the last one) means the sheet
+  // is never actually empty at any point a concurrent read could land in.
   var range = sheet.getRange(1, 1, rows.length, L2_POINTS_HEADER.length);
   // Plain-text format BEFORE writing, not after -- Sheets "helpfully"
   // auto-detects some ID-like strings as numbers/dates otherwise (same issue
   // Route Planner hit with "7-11" being read as a date).
   range.setNumberFormat("@");
   range.setValues(rows);
+  var leftoverRows = sheet.getLastRow() - rows.length;
+  if (leftoverRows > 0) {
+    sheet.getRange(rows.length + 1, 1, leftoverRows, sheet.getLastColumn()).clearContent();
+  }
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, L2_POINTS_HEADER.length);
 }
@@ -490,7 +500,6 @@ function writeConditionSheet_(conditions) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Condition");
   if (!sheet) sheet = ss.insertSheet("Condition");
-  sheet.clearContents();
   var rows = [CONDITION_HEADER];
   conditions.forEach(function (c) {
     (c.mkts || []).forEach(function (m, i) {
@@ -501,9 +510,15 @@ function writeConditionSheet_(conditions) {
       ]);
     });
   });
+  // Same write-before-clear ordering as writePointsSheet_, and for the same
+  // reason -- see the comment there.
   var range = sheet.getRange(1, 1, rows.length, CONDITION_HEADER.length);
   range.setNumberFormat("@");
   range.setValues(rows);
+  var leftoverRows = sheet.getLastRow() - rows.length;
+  if (leftoverRows > 0) {
+    sheet.getRange(rows.length + 1, 1, leftoverRows, sheet.getLastColumn()).clearContent();
+  }
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, CONDITION_HEADER.length);
   return rows.length - 1;
