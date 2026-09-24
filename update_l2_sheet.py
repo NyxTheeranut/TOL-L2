@@ -158,6 +158,16 @@ def load_points(wb, conditions, village_lookup):
     return points
 
 
+PROGRESS_TOTAL_STEPS = 4
+
+
+def progress(step, label, width=28):
+    filled = int(width * step / PROGRESS_TOTAL_STEPS)
+    bar = "█" * filled + "░" * (width - filled)
+    pct = int(100 * step / PROGRESS_TOTAL_STEPS)
+    print(f"\n[{bar}] {pct:3d}%  Step {step}/{PROGRESS_TOTAL_STEPS}: {label}")
+
+
 def main():
     if not L2_XLSX or not L2_XLSX.exists():
         raise SystemExit(
@@ -180,13 +190,17 @@ def main():
             "your Apps Script Web App URL -- see the repo README."
         )
 
+    progress(1, "Reading village name lookup")
     print("Reading village name lookup...")
     village_lookup = load_village_lookup(VILLAGE_FILE)
     print(f"  {len(village_lookup)} L2 splitters have a village name on file")
 
+    progress(2, "Reading source workbook")
     print("Reading source workbook...")
     wb = openpyxl.load_workbook(L2_XLSX, data_only=True, read_only=True)
     conditions = load_conditions(wb)
+
+    progress(3, "Matching points to villages")
     points = load_points(wb, conditions, village_lookup)
     matched = sum(1 for p in points if p["village"])
     print(f"Parsed {len(conditions)} condition rows, {len(points)} eligible L2 points "
@@ -199,6 +213,7 @@ def main():
         SYNC_URL, data=payload, method="POST",
         headers={"Content-Type": "text/plain;charset=utf-8"},
     )
+    progress(4, "Uploading to Google Sheet")
     print("Uploading to Google Sheet...")
     try:
         with urllib.request.urlopen(req, timeout=60) as res:
