@@ -126,7 +126,7 @@ Then run:
 python3 update_l2_sheet.py
 ```
 
-(or double-click `Update L2 Discount Map.command` in the Dashboard folder's
+(or double-click `Update L2.command` in the Dashboard folder's
 `Launchers/`, once that's set up) to populate the "L2 Points" / "Condition"
 tabs. Re-run it any time the source Project Atlas xlsx changes.
 

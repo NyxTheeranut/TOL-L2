@@ -1154,21 +1154,22 @@ function selectStop(i, fromList){
     selectedRowEl = row;
 
     // Picking a stop from the List view (mobile) should show it, not stay
-    // on the list. Was an animated flyTo() here unconditionally -- fine
-    // when the map was already on screen (a pin tap), but when the map
-    // panel had been display:none a moment ago, that meant an animated
-    // transition AND a resize AND first-time tile loads for the
-    // newly-visible viewport all landing in the same breath, which is what
-    // was actually freezing the page for several seconds on a phone.
-    // Jumping straight there instead skips the animation entirely for that
-    // one case, which is barely visible anyway since the view was just
-    // hidden a moment ago.
+    // on the list -- same flyTo() either way now, whether the map was
+    // already on screen (a pin tap) or was display:none a moment ago
+    // (a list tap). Used to jump instantly for the latter case specifically,
+    // reasoning that animating on top of the pane-switch resize was what
+    // froze the page -- but that resize is setMobileView's own synchronous
+    // invalidateSize() call, already done and painted by the time flyTo
+    // starts here; flyTo also runs its own requestAnimationFrame loop
+    // independent of the zoomAnimation map option touch devices already
+    // have turned off elsewhere for GPU reasons, so it isn't paying that
+    // cost either. What actually reads as "frozen" on a real connection is
+    // waiting on brand-new map tiles with nothing on screen suggesting
+    // progress -- flyTo's motion is exactly the cue that was missing,
+    // matching how Route Planner treats every tap identically.
     const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')){
-      map.setView(target, targetZoom, {animate:false});
-    } else {
-      map.flyTo(target, targetZoom, {duration:0.5});
-    }
+    setMobileView('map');
+    map.flyTo(target, targetZoom, {duration:0.5});
   }
 
   const skipDetailForNow = IS_TOUCH && fromList && !sameAsSelected;
@@ -1665,8 +1666,8 @@ function openFeedbackDetail(f){
 
   if(f.l2Lat!=null && f.l2Lon!=null){
     const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
-    else map.flyTo(target, targetZoom, {duration:0.5});
+    setMobileView('map');
+    map.flyTo(target, targetZoom, {duration:0.5});
   }
 }
 
@@ -1710,8 +1711,8 @@ function openFeedbackGroupDetail(l2id, group){
 
   if(first.l2Lat!=null && first.l2Lon!=null){
     const target = [first.l2Lat, first.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    if(setMobileView('map')) map.setView(target, targetZoom, {animate:false});
-    else map.flyTo(target, targetZoom, {duration:0.5});
+    setMobileView('map');
+    map.flyTo(target, targetZoom, {duration:0.5});
   }
 }
 
