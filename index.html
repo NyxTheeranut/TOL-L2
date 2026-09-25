@@ -780,6 +780,62 @@ function findCondition(arch, arpaGroup, port, nad){
   return CONDITIONS.find(c => c.arch===arch && c.arpaGroup===arpaGroup && c.port===port && c.nad===nad);
 }
 
+/* ===== myL2Data ships L2 Points/Condition as raw {header, rows} -- no
+   per-row object-building or (for Condition) nested-grouping work happens
+   inside Apps Script, which is slower per-operation and quota-metered than
+   a browser's own JS engine; every sign-in used to pay for that reshaping
+   before seeing anything at all. Mirrors readRawTab_'s former server-side
+   logic verbatim, just run here instead -- same "ship raw, reconstruct
+   client-side" fix the sibling TOL Suggestion project already proved out
+   for this exact class of slow-sign-in problem. ===== */
+function rowObjectsFromRaw_(raw){
+  if(!raw || !raw.header || !raw.header.length) return [];
+  return raw.rows.map(row=>{
+    const obj = {};
+    raw.header.forEach((h,i)=>{ obj[String(h).trim()] = row[i]; });
+    return obj;
+  });
+}
+
+function reconstructPoints_(raw){
+  return rowObjectsFromRaw_(raw).filter(r=>r.id).map(r=>({
+    id: String(r.id),
+    hpb: String(r.hpb),
+    lat: Number(r.lat),
+    lon: Number(r.lon),
+    arch: String(r.arch),
+    port: String(r.port),
+    arpa: Number(r.arpa),
+    arpaGroup: String(r.arpaGroup),
+    nad: String(r.nad),
+    adm2: String(r.adm2),
+    adm3: String(r.adm3),
+    village: r.village ? String(r.village) : null,
+  }));
+}
+
+function reconstructConditions_(raw){
+  const byKey = {}; // "arch|arpaGroup|port|nad" -> condition object
+  const order = [];
+  rowObjectsFromRaw_(raw).forEach(r=>{
+    if(!r.arch) return;
+    const key = [r.arch, r.arpaGroup, r.port, r.nad].join('|');
+    if(!byKey[key]){
+      byKey[key] = {
+        arch: String(r.arch), arpaGroup: String(r.arpaGroup),
+        port: String(r.port), nad: String(r.nad),
+        discPct: Number(r.discPct), mkts: [],
+      };
+      order.push(key);
+    }
+    byKey[key].mkts.push({
+      code: String(r.code), desc: String(r.desc),
+      disc: Number(r.disc), normal: Number(r.normal), special: Number(r.special),
+    });
+  });
+  return order.map(key=>byKey[key]);
+}
+
 /* ===== theme handling ===== */
 const root = document.documentElement;
 function effectiveTheme(){
@@ -1998,7 +2054,8 @@ async function onGoogleSignIn(response){
     // rewriting the sheet, or hit a transient Apps Script hiccup (both seen
     // in practice: a plain reload/retry fixed it). Retried a couple of
     // times with a short pause instead of shown to the user as-is.
-    for(let attempt=1; data.ok && (data.points||[]).length===0 && attempt<=2; attempt++){
+    const rowCount = d => (d.l2PointsRaw && d.l2PointsRaw.rows) ? d.l2PointsRaw.rows.length : 0;
+    for(let attempt=1; data.ok && rowCount(data)===0 && attempt<=2; attempt++){
       await new Promise(r=> setTimeout(r, 800*attempt));
       data = await fetchMyL2Data_(idToken);
     }
@@ -2010,7 +2067,7 @@ async function onGoogleSignIn(response){
       );
       return;
     }
-    if((data.points||[]).length===0){
+    if(rowCount(data)===0){
       // Still empty after retrying -- initApp() below assumes at least one
       // point (L.latLngBounds([]) throws "Bounds are not valid" out of
       // fitBounds, which the catch block below would otherwise report as a
@@ -2020,8 +2077,8 @@ async function onGoogleSignIn(response){
       showLoginStatus('No active-discount data found on the server right now. Try signing in again in a moment.', true);
       return;
     }
-    DATA = data.points || [];
-    CONDITIONS = data.conditions || [];
+    DATA = reconstructPoints_(data.l2PointsRaw);
+    CONDITIONS = reconstructConditions_(data.conditionRaw);
     userRole = data.role === 'leader' ? 'leader' : 'subordinate';
     currentIdToken = idToken;
     document.getElementById('loginGate').style.display = 'none';

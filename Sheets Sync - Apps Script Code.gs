@@ -19,7 +19,9 @@
  *   combination -- 36 conditions x 9 packages = 324 rows normally. Kept flat
  *   like this (rather than one JSON blob per condition) so a price or
  *   discount can be hand-edited directly in the Sheet if needed; myL2Data
- *   reassembles the nested shape the page's findCondition() expects.
+ *   ships these rows raw (readRawTab_) and index.html reassembles the
+ *   nested shape findCondition() expects, client-side -- not in Apps
+ *   Script, which is slower per-operation and quota-metered.
  * "Users" -- who's allowed to view the map, and as what: email + a role
  *   column (leader / subordinate; blank or missing defaults to
  *   subordinate). Created automatically (with a sample row) the first time
@@ -222,84 +224,37 @@ function myL2Data_(idToken) {
       message: "This Google account (" + email + ") isn't set up yet. Ask an admin to add it to the Users tab.",
     };
   }
+  // Sends the raw tabs, NOT the reconstructed nested shape -- rebuilding
+  // Condition's flat rows into {arch, arpaGroup, port, nad, discPct,
+  // mkts:[...]} objects (36 conditions x 9 packages = 324 rows grouped)
+  // is real CPU work, and doing it here means every single sign-in pays
+  // for it inside Apps Script's slower, quota-metered runtime before the
+  // viewer sees anything at all. index.html now does the identical
+  // reconstruction (reconstructPoints_/reconstructConditions_, mirroring
+  // readRawTab_'s former logic verbatim) in its own fast JS engine
+  // instead -- same "ship raw, reconstruct client-side" fix already
+  // proven out in the TOL Suggestion project's myData_, adopted here for
+  // the same documented reason: that project's own comment calls this
+  // "almost certainly why sign-in was timing out."
   return {
     ok: true,
     email: email,
     role: getUserRole_(email),
-    points: readL2Points_(),
-    conditions: readConditions_(),
+    l2PointsRaw: readRawTab_("L2 Points"),
+    conditionRaw: readRawTab_("Condition"),
   };
 }
 
-function readL2Points_() {
+// Ships a tab's values completely unprocessed -- {header, rows} exactly as
+// getDataRange().getValues() returns them, no per-row object-building or
+// grouping. See the comment above myL2Data_'s return for why.
+function readRawTab_(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("L2 Points");
-  if (!sheet) return [];
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) return { header: [], rows: [] };
   var data = sheet.getDataRange().getValues();
-  var header = data[0];
-  var idx = {};
-  header.forEach(function (h, i) { idx[String(h).trim()] = i; });
-  var points = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    if (!row[idx.id]) continue;
-    points.push({
-      id: String(row[idx.id]),
-      hpb: String(row[idx.hpb]),
-      lat: Number(row[idx.lat]),
-      lon: Number(row[idx.lon]),
-      arch: String(row[idx.arch]),
-      port: String(row[idx.port]),
-      arpa: Number(row[idx.arpa]),
-      arpaGroup: String(row[idx.arpaGroup]),
-      nad: String(row[idx.nad]),
-      adm2: String(row[idx.adm2]),
-      adm3: String(row[idx.adm3]),
-      village: row[idx.village] ? String(row[idx.village]) : null,
-    });
-  }
-  return points;
-}
-
-// Reassembles the flat "Condition" tab (one row per condition x MKT-package)
-// back into the nested {arch, arpaGroup, port, nad, discPct, mkts:[...]}
-// shape index.html's findCondition() expects -- same shape it already had
-// when this data was embedded directly in the page.
-function readConditions_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Condition");
-  if (!sheet) return [];
-  var data = sheet.getDataRange().getValues();
-  var header = data[0];
-  var idx = {};
-  header.forEach(function (h, i) { idx[String(h).trim()] = i; });
-
-  var byKey = {}; // "arch|arpaGroup|port|nad" -> condition object
-  var order = [];
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    if (!row[idx.arch]) continue;
-    var key = [row[idx.arch], row[idx.arpaGroup], row[idx.port], row[idx.nad]].join("|");
-    if (!byKey[key]) {
-      byKey[key] = {
-        arch: String(row[idx.arch]),
-        arpaGroup: String(row[idx.arpaGroup]),
-        port: String(row[idx.port]),
-        nad: String(row[idx.nad]),
-        discPct: Number(row[idx.discPct]),
-        mkts: [],
-      };
-      order.push(key);
-    }
-    byKey[key].mkts.push({
-      code: String(row[idx.code]),
-      desc: String(row[idx.desc]),
-      disc: Number(row[idx.disc]),
-      normal: Number(row[idx.normal]),
-      special: Number(row[idx.special]),
-    });
-  }
-  return order.map(function (key) { return byKey[key]; });
+  if (!data.length) return { header: [], rows: [] };
+  return { header: data[0], rows: data.slice(1) };
 }
 
 // ---------- feedback: field visit notes, submitted by anyone allow-listed,
