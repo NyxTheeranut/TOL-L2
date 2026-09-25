@@ -254,6 +254,19 @@ body{
   display:flex;align-items:center;gap:10px;
   padding:9px 8px;margin:2px 0;border-radius:8px;
   cursor:pointer;border:1px solid transparent;
+  /* Lets the browser skip layout/style/paint work entirely for whichever
+     rows are currently scrolled off-screen within .stop-list -- measured
+     via a real CPU-throttled trace that toggling display:none on this
+     list's PARENT (switching mobile List/Map panes) was forcing a style +
+     layout recalculation pass across its full ~9,900-node subtree (all
+     1,166 rows) every single time, regardless of how many were actually
+     visible. contain-intrinsic-size is a placeholder height for skipped
+     rows (so the scrollbar/scroll position stay sane without laying them
+     out) -- doesn't need to be exact, just close to a typical row's real
+     height. Ignored entirely on browsers that don't support it -- a pure
+     progressive enhancement, nothing here depends on it applying. */
+  content-visibility:auto;
+  contain-intrinsic-size:0 80px;
 }
 .stop-row:hover{background:var(--surface-2);}
 .stop-row.selected{background:var(--accent-soft);border-color:var(--accent);}
@@ -1259,22 +1272,15 @@ function selectStop(i){
     selectedRowEl = row;
 
     // Picking a stop from the List view (mobile) should show it, not stay
-    // on the list -- same flyTo() either way now, whether the map was
-    // already on screen (a pin tap) or was display:none a moment ago
-    // (a list tap). Used to jump instantly for the latter case specifically,
-    // reasoning that animating on top of the pane-switch resize was what
-    // froze the page -- but that resize is setMobileView's own synchronous
-    // invalidateSize() call, already done and painted by the time flyTo
-    // starts here; flyTo also runs its own requestAnimationFrame loop
-    // independent of the zoomAnimation map option touch devices already
-    // have turned off elsewhere for GPU reasons, so it isn't paying that
-    // cost either. What actually reads as "frozen" on a real connection is
-    // waiting on brand-new map tiles with nothing on screen suggesting
-    // progress -- flyTo's motion is exactly the cue that was missing,
-    // matching how Route Planner treats every tap identically.
+    // on the list -- same flyTo() either way, whether the map was already
+    // on screen (a pin tap) or was display:none a moment ago (a list tap).
+    // The latter's pane-reveal/resize is genuinely slower on a throttled
+    // phone (measured: ~170ms before the list-tap case's first visible
+    // movement, ~4ms for a pin tap that skips it entirely) -- passed as a
+    // callback so setMobileView can run it at the right moment relative to
+    // that resize instead of it always running immediately here regardless.
     const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map');
-    map.flyTo(target, targetZoom, {duration:0.5});
+    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
   }
 
   // Touch: the lightweight popup card (bound once at marker creation, see
@@ -1440,7 +1446,11 @@ function closeDetail(){
    blank/mis-sized until the next manual pan/zoom. */
 /* Returns whether the map panel just went from hidden to visible, so the
    caller can treat that transition specially (see selectStop). */
-function setMobileView(view){
+// afterReveal (optional): the caller's own map-move logic (a flyTo, usually),
+// run at the correct time regardless of which branch below applies -- see
+// the comment past the class-toggle for why that timing matters enough to
+// route it through here instead of the caller just doing it right after.
+function setMobileView(view, afterReveal){
   const bodyRow = document.getElementById('bodyRow');
   const returningToMap = view==='map' && bodyRow.classList.contains('mobile-view-list');
   bodyRow.classList.toggle('mobile-view-list', view==='list');
@@ -1453,12 +1463,37 @@ function setMobileView(view){
   document.querySelectorAll('#mobileTabbar button').forEach(b=>{
     b.classList.toggle('active', b.dataset.view==='feedback' ? appMode==='feedback' : b.dataset.view===view);
   });
-  // Synchronous, not setTimeout(0): reading layout right after the display:none
-  // -> flex class swap above forces the browser to lay it out NOW, which is
-  // exactly what makes this safe to call immediately. pan:false skips
-  // Leaflet's own recentering pass (and the moveend it would fire) -- the
-  // caller is about to explicitly move the view anyway.
-  if(returningToMap && map) map.invalidateSize({pan:false});
+  if(returningToMap && map){
+    // setTimeout(0), not synchronous -- measured with real CPU throttling
+    // that the synchronous version (invalidateSize() called immediately,
+    // afterReveal/flyTo called right after it returns, both inside the
+    // same script execution) blocks the browser from painting ANYTHING in
+    // between: revealing the panel, the forced layout recalculation for a
+    // container that just went from zero size to full size, AND the
+    // animation's first frame all happen in one uninterrupted burst, so
+    // nothing visibly changes until the whole thing is done -- on a
+    // throttled phone that was a measured ~170ms of a dead-looking screen
+    // before any motion appeared, vs ~4ms for a pin tap (map already
+    // visible, none of this reveal/resize work needed). A macrotask defer
+    // (not requestAnimationFrame, which still runs before the SAME paint
+    // and wouldn't split anything) lets the browser actually paint the
+    // reveal first, then do the expensive part -- same fix already used
+    // for this exact class of bug in the sibling TOL Suggestion project's
+    // setSearchMobileView.
+    // invalidateSize() and afterReveal() stay in the SAME deferred callback
+    // deliberately -- this was tried once with invalidateSize alone
+    // deferred and the caller's flyTo left running synchronously right
+    // after setMobileView() returned; that meant flyTo still ran BEFORE
+    // the deferred invalidateSize had fixed the size, animating against
+    // the stale pre-reveal dimensions. Keeping both together removes that
+    // race instead of reintroducing it.
+    setTimeout(()=>{
+      map.invalidateSize({pan:false});
+      if(afterReveal) afterReveal();
+    }, 0);
+  } else if(afterReveal){
+    afterReveal();
+  }
   return returningToMap;
 }
 
@@ -1794,8 +1829,7 @@ function openFeedbackDetail(f){
 
   if(f.l2Lat!=null && f.l2Lon!=null){
     const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map');
-    map.flyTo(target, targetZoom, {duration:0.5});
+    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
   }
 }
 
@@ -1839,8 +1873,7 @@ function openFeedbackGroupDetail(l2id, group){
 
   if(first.l2Lat!=null && first.l2Lon!=null){
     const target = [first.l2Lat, first.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map');
-    map.flyTo(target, targetZoom, {duration:0.5});
+    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
   }
 }
 
