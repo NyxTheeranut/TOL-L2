@@ -1272,15 +1272,17 @@ function selectStop(i){
     selectedRowEl = row;
 
     // Picking a stop from the List view (mobile) should show it, not stay
-    // on the list -- same flyTo() either way, whether the map was already
+    // on the list -- same setView() either way, whether the map was already
     // on screen (a pin tap) or was display:none a moment ago (a list tap).
-    // The latter's pane-reveal/resize is genuinely slower on a throttled
-    // phone (measured: ~170ms before the list-tap case's first visible
-    // movement, ~4ms for a pin tap that skips it entirely) -- passed as a
+    // setView, not flyTo: Route Planner and TOL Suggestion both jump
+    // instantly here (grep confirms neither ever calls flyTo at all), and
+    // that's a real part of why they feel lighter, not just the pane-reveal
+    // work -- flyTo runs its own ~0.5s requestAnimationFrame loop on top of
+    // that reveal cost, setView is one synchronous repaint. Passed as a
     // callback so setMobileView can run it at the right moment relative to
-    // that resize instead of it always running immediately here regardless.
+    // the pane-reveal instead of it always running immediately here regardless.
     const target = [d.lat, d.lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
+    setMobileView('map', ()=> map.setView(target, targetZoom));
   }
 
   // Touch: the lightweight popup card (bound once at marker creation, see
@@ -1297,12 +1299,14 @@ function selectStop(i){
   // losing the "View details" button's onclick (set in the marker's
   // popupopen handler, which doesn't refire for an already-open popup).
   if(IS_TOUCH){
-    // A stop selected from the list (or one flown to from far away) might
+    // A stop selected from the list (or one jumped to from far away) might
     // not actually be on the map yet -- updateVisiblePins only adds/removes
-    // markers on 'moveend', which for an animated flyTo fires ~0.5s after
-    // this line runs, not before it. Leaflet can't open a popup for a
-    // marker that isn't attached to the map, so it has to be added here
-    // explicitly rather than waiting for that natural cycle to catch up.
+    // markers on 'moveend', and for a list tap the setView above runs inside
+    // setMobileView's deferred setTimeout(0), which hasn't fired yet by the
+    // time this line runs (this code is still in the same synchronous burst
+    // that scheduled it). Leaflet can't open a popup for a marker that isn't
+    // attached to the map, so it has to be added here explicitly rather than
+    // waiting for that natural cycle to catch up.
     if(!pinLayer.hasLayer(d.marker)) pinLayer.addLayer(d.marker);
     if(!d.marker.isPopupOpen()) d.marker.openPopup();
   } else {
@@ -1446,7 +1450,7 @@ function closeDetail(){
    blank/mis-sized until the next manual pan/zoom. */
 /* Returns whether the map panel just went from hidden to visible, so the
    caller can treat that transition specially (see selectStop). */
-// afterReveal (optional): the caller's own map-move logic (a flyTo, usually),
+// afterReveal (optional): the caller's own map-move logic (a setView, usually),
 // run at the correct time regardless of which branch below applies -- see
 // the comment past the class-toggle for why that timing matters enough to
 // route it through here instead of the caller just doing it right after.
@@ -1466,27 +1470,28 @@ function setMobileView(view, afterReveal){
   if(returningToMap && map){
     // setTimeout(0), not synchronous -- measured with real CPU throttling
     // that the synchronous version (invalidateSize() called immediately,
-    // afterReveal/flyTo called right after it returns, both inside the
+    // afterReveal/setView called right after it returns, both inside the
     // same script execution) blocks the browser from painting ANYTHING in
-    // between: revealing the panel, the forced layout recalculation for a
-    // container that just went from zero size to full size, AND the
-    // animation's first frame all happen in one uninterrupted burst, so
-    // nothing visibly changes until the whole thing is done -- on a
-    // throttled phone that was a measured ~170ms of a dead-looking screen
-    // before any motion appeared, vs ~4ms for a pin tap (map already
-    // visible, none of this reveal/resize work needed). A macrotask defer
-    // (not requestAnimationFrame, which still runs before the SAME paint
-    // and wouldn't split anything) lets the browser actually paint the
-    // reveal first, then do the expensive part -- same fix already used
-    // for this exact class of bug in the sibling TOL Suggestion project's
-    // setSearchMobileView.
+    // between: revealing the panel and the forced layout recalculation for
+    // a container that just went from zero size to full size both happen
+    // in one uninterrupted burst, so nothing visibly changes until it's
+    // done -- on a throttled phone that was a measured ~170ms of a
+    // dead-looking screen before any motion appeared, vs ~4ms for a pin tap
+    // (map already visible, none of this reveal/resize work needed). A
+    // macrotask defer (not requestAnimationFrame, which still runs before
+    // the SAME paint and wouldn't split anything) lets the browser actually
+    // paint the reveal first, then do the expensive part -- same fix
+    // already used for this exact class of bug in the sibling TOL
+    // Suggestion project's setSearchMobileView.
     // invalidateSize() and afterReveal() stay in the SAME deferred callback
     // deliberately -- this was tried once with invalidateSize alone
-    // deferred and the caller's flyTo left running synchronously right
-    // after setMobileView() returned; that meant flyTo still ran BEFORE
-    // the deferred invalidateSize had fixed the size, animating against
+    // deferred and the caller's setView left running synchronously right
+    // after setMobileView() returned; that meant setView still ran BEFORE
+    // the deferred invalidateSize had fixed the size, centering against
     // the stale pre-reveal dimensions. Keeping both together removes that
-    // race instead of reintroducing it.
+    // race instead of reintroducing it -- same reasoning TOL Suggestion's
+    // own setSearchMobileView documents for why it defers its setView too,
+    // not just invalidateSize.
     setTimeout(()=>{
       map.invalidateSize({pan:false});
       if(afterReveal) afterReveal();
@@ -1829,7 +1834,7 @@ function openFeedbackDetail(f){
 
   if(f.l2Lat!=null && f.l2Lon!=null){
     const target = [f.l2Lat, f.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
+    setMobileView('map', ()=> map.setView(target, targetZoom));
   }
 }
 
@@ -1873,7 +1878,7 @@ function openFeedbackGroupDetail(l2id, group){
 
   if(first.l2Lat!=null && first.l2Lon!=null){
     const target = [first.l2Lat, first.l2Lon], targetZoom = Math.max(map.getZoom(), 15);
-    setMobileView('map', ()=> map.flyTo(target, targetZoom, {duration:0.5}));
+    setMobileView('map', ()=> map.setView(target, targetZoom));
   }
 }
 
@@ -1921,11 +1926,13 @@ function initApp(){
   const initialCfg = TILE_CONFIG[effectiveTheme()];
   map = L.map('map', {
     zoomControl:false, preferCanvas:true, maxZoom: initialCfg.maxZoom,
-    // Leaflet's own zoom/fade/marker transitions are separate from the
-    // flyTo() already fixed above, and cost real GPU compositing time on
-    // weaker phones regardless of which method triggers them. Touch devices
-    // skip all of it -- every view change (pinch, tap-to-select, the zoom
-    // buttons) snaps instead of animates.
+    // Leaflet's own zoom/fade/marker transitions cost real GPU compositing
+    // time on weaker phones regardless of which method triggers them (and
+    // are separate from the pin/list-tap setView() above, which is already
+    // instant on its own -- matches Route Planner/TOL Suggestion, neither
+    // of which ever calls flyTo). Touch devices skip all of it -- every
+    // view change (pinch, tap-to-select, the zoom buttons) snaps instead of
+    // animates.
     zoomAnimation: !IS_TOUCH, fadeAnimation: !IS_TOUCH, markerZoomAnimation: !IS_TOUCH,
   }).fitBounds(bounds, {padding:[40,40], animate:!IS_TOUCH});
   L.control.zoom({position:'bottomright'}).addTo(map);
