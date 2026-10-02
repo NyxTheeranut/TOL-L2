@@ -41,7 +41,7 @@ import openpyxl
 # change the other.
 SYNC_URL = "https://script.google.com/macros/s/AKfycbwBmi2TmYQwUzkYBWlkSo5MtWPfk43GQdxHbeIrVP7I1MHEoTbtWnHsDsA6_0a-9zDkeQ/exec"
 
-DASHBOARD_DIR = Path(__file__).resolve().parent.parent
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def _find(name, folders):

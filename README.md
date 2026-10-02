@@ -30,9 +30,19 @@ Apps Script Web App  ──executes as the Sheet owner──▶  Google Sheet
 this page renders the map/list/detail panel from that data
 ```
 
-`update_l2_sheet.py` is a separate, local-only tool — it re-reads the source
+`sync/update_l2_sheet.py` is a separate, local-only tool — it re-reads the source
 xlsx file (plus a village-name lookup file) on your machine and pushes the
 current data into the Sheet. It's never called from the hosted page.
+
+## Repo layout
+
+```
+index.html        the whole site -- GitHub Pages serves this from repo root
+manifest.json      Android/iOS "Add to Home Screen" metadata
+icons/             app icons (source + generated apple-touch/192/512 sizes)
+backend/           Sheets Sync - Apps Script Code.gs (paste into Apps Script)
+sync/              update_l2_sheet.py -- the local data sync tool
+```
 
 District boundaries (the dashed อำเภอ outlines) are the one thing that stays
 embedded directly in `index.html` rather than coming from the Sheet — they're
@@ -69,13 +79,13 @@ shipping them in a public repo.
    Planner's Sheet — this project's Apps Script deployment and secret are
    its own, independent set).
 2. **Extensions → Apps Script**, delete the starter code, paste in the full
-   contents of `Sheets Sync - Apps Script Code.gs` from this repo.
+   contents of `backend/Sheets Sync - Apps Script Code.gs` from this repo.
 3. **Project Settings** (gear icon, left sidebar) → **Script Properties** →
    add two:
    - `OAUTH_CLIENT_ID` = the Client ID from step 1.
    - `SYNC_SECRET` = any random string, e.g. from `openssl rand -hex 24` in a
      terminal. Gates the `syncL2Data` action (used only by
-     `update_l2_sheet.py`, see step 5) — without it, anyone who finds the
+     `sync/update_l2_sheet.py`, see step 5) — without it, anyone who finds the
      deployment URL could overwrite the entire dataset with one request,
      since that action can't go through the sign-in check the way `myL2Data`
      does.
@@ -92,7 +102,7 @@ shipping them in a public repo.
 1. In `index.html`, set `GOOGLE_CLIENT_ID` (near the bottom of the
    `<script>` block) to the Client ID from step 1.
 2. Set `DEFAULT_SYNC_URL` to the Web app URL from step 2.
-3. In `update_l2_sheet.py`, set `SYNC_URL` to that same Web app URL.
+3. In `sync/update_l2_sheet.py`, set `SYNC_URL` to that same Web app URL.
 
 ### 4. Add your team to the Users tab
 
@@ -123,7 +133,7 @@ specifically so it can't be.
 Then run:
 
 ```
-python3 update_l2_sheet.py
+python3 sync/update_l2_sheet.py
 ```
 
 (or double-click `Update L2.command` in the Dashboard folder's
@@ -192,7 +202,7 @@ and `file://` isn't one you can add.
   UI does or doesn't show. `submitFeedback` itself is *not* role-gated —
   any allow-listed user, leader or subordinate, can write a note.
 - `syncL2Data` can't go through the sign-in check at all — it's not a person
-  signing in, it's `update_l2_sheet.py` running on your own machine — so
+  signing in, it's `sync/update_l2_sheet.py` running on your own machine — so
   it's gated by `SYNC_SECRET` instead (see step 2 and step 5 above). This
   deployment's URL is not actually secret; it's embedded directly in the
   public `index.html`, so without this, "Anyone" access would mean anyone on
