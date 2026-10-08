@@ -72,7 +72,7 @@ def _find_latest(pattern, folders):
 
 
 L2_XLSX = _find_latest("*Project Atlas L2*.xlsx", ["L2", "Config", "."])
-VILLAGE_FILE = _find("Active FTTH In Village_BMA-West.TXT", [Path("TOL") / "Data", "Config", "."])
+VILLAGE_FILE = _find("Active FTTH In Village_BMA-West.TXT", [Path("TOL Tracker") / "Data", "Config", "."])
 SYNC_SECRET_FILE = DASHBOARD_DIR / "Config" / "l2_sync_secret.txt"
 
 
