@@ -71,7 +71,7 @@ def _find_latest(pattern, folders):
     return sorted(candidates, key=lambda p: p.name, reverse=True)[0]
 
 
-L2_XLSX = _find_latest("*Project Atlas L2*.xlsx", ["L2", "Config", "."])
+L2_XLSX = _find_latest("*Project Atlas L2*.xlsx", [Path("Shared Data") / "L2", "L2", "Config", "."])
 VILLAGE_FILE = _find("Active FTTH In Village_BMA-West.TXT", [Path("TOL Tracker") / "Data", "Config", "."])
 SYNC_SECRET_FILE = DASHBOARD_DIR / "Config" / "l2_sync_secret.txt"
 
@@ -171,8 +171,8 @@ def progress(step, label, width=28):
 def main():
     if not L2_XLSX or not L2_XLSX.exists():
         raise SystemExit(
-            "No '*Project Atlas L2*.xlsx' found in L2/ (or Config/, or the Dashboard "
-            "root) -- drop the latest month's export in L2/ and re-run."
+            "No '*Project Atlas L2*.xlsx' found in Shared Data/L2/ (or Config/, or the Dashboard "
+            "root) -- drop the latest month's export in Shared Data/L2/ and re-run."
         )
     if not VILLAGE_FILE.exists():
         raise SystemExit(f"Not found: {VILLAGE_FILE}")
