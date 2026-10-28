@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#eef2f5;
@@ -23,7 +24,7 @@
   --border-soft:#e7edf1;
   --text:#182430;
   --text-muted:#5c6d7a;
-  --text-faint:#8fa0ac;
+  --text-faint:#5b6b77;
   --accent:#d64a2e;
   --accent-ink:#ffffff;
   --accent-soft:#fbe3db;
@@ -49,7 +50,7 @@
     --border-soft:#212b35;
     --text:#e7edf2;
     --text-muted:#8fa0ac;
-    --text-faint:#5f7280;
+    --text-faint:#93a5b2;
     --accent:#ff7a55;
     --accent-ink:#1a0d07;
     --accent-soft:#3a2018;
@@ -73,7 +74,7 @@
   --border-soft:#212b35;
   --text:#e7edf2;
   --text-muted:#8fa0ac;
-  --text-faint:#5f7280;
+  --text-faint:#93a5b2;
   --accent:#ff7a55;
   --accent-ink:#1a0d07;
   --accent-soft:#3a2018;
@@ -140,8 +141,8 @@ body{
   z-index:1200;
 }
 .brand{display:flex;align-items:center;gap:10px;}
-.brand-title{font-weight:700;font-size:16.5px;letter-spacing:.1px;}
-.brand-sub{font-size:11.5px;color:var(--text-faint);font-weight:500;margin-top:1px;}
+.brand-title{font-weight:700;font-size:16.5px;letter-spacing:0;}
+.brand-sub{font-size:12px;color:var(--text-faint);font-weight:500;margin-top:1px;}
 .topbar-search{
   margin-left:6px;
   flex:0 1 340px;
@@ -162,7 +163,7 @@ body{
 .topbar-search input:focus{border-color:var(--accent);}
 .topbar-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.55;}
 /* Same search box, shown here instead of the topbar once the topbar has no
-   room for it (see the mobile breakpoint below) — one input either way,
+   room for it (see the mobile breakpoint below), one input either way,
    never both at once, so there's nothing to keep in sync. */
 .sidebar-search{display:none;position:relative;margin-bottom:12px;}
 .sidebar-search input{
@@ -227,7 +228,7 @@ body{
 .sidebar[data-mode="feedback"] .mode-discount{display:none;}
 .sidebar[data-mode="discount"] .mode-feedback{display:none;}
 .sidebar-section{padding:14px 16px 12px;border-bottom:1px solid var(--border-soft);}
-.filter-label{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:7px;}
+.filter-label{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text-faint);margin-bottom:7px;}
 .segmented{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;}
 .segmented button{
   flex:1;border:none;background:transparent;color:var(--text-muted);
@@ -276,11 +277,11 @@ body{
 .stop-dot{width:11px;height:11px;border-radius:50%;flex:0 0 11px;border:1.5px solid var(--surface);box-shadow:0 0 0 1px rgba(10,16,22,.2);}
 .stop-main{min-width:0;flex:1;}
 .stop-id{font-size:12.5px;font-weight:600;}
-.stop-village{font-size:11.5px;color:var(--text);font-weight:500;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.stop-loc{font-size:11px;color:var(--text-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stop-village{font-size:12px;color:var(--text);font-weight:500;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stop-loc{font-size:12px;color:var(--text-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .stop-meta{text-align:right;flex:0 0 auto;}
 .stop-disc{font-size:12.5px;font-weight:700;color:var(--accent);}
-.stop-arpa{font-size:10.5px;color:var(--text-faint);margin-top:1px;}
+.stop-arpa{font-size:12px;color:var(--text-faint);margin-top:1px;}
 .empty-note{padding:28px 18px;text-align:center;color:var(--text-faint);font-size:12.5px;line-height:1.6;}
 
 /* ---------- Map ---------- */
@@ -288,7 +289,7 @@ body{
 #map{position:absolute;inset:0;background:var(--bg);}
 .leaflet-control-attribution{
   background:var(--surface) !important;color:var(--text-faint) !important;
-  font-family:"Kanit",sans-serif !important; font-size:10px !important;
+  font-family:"Kanit",sans-serif !important; font-size:12px !important;
 }
 .leaflet-control-attribution a{color:var(--text-muted) !important;}
 .leaflet-control-zoom a{
@@ -340,7 +341,7 @@ body{
   position:absolute;top:-6px;right:-6px;
   min-width:16px;height:16px;padding:0 3px;border-radius:999px;
   background:var(--surface);color:#7c5cff;border:2px solid #7c5cff;
-  font-size:10px;font-weight:800;line-height:1;
+  font-size:12px;font-weight:800;line-height:1;
   display:flex;align-items:center;justify-content:center;
 }
 
@@ -349,7 +350,7 @@ body{
    "N notes" count badge, so no per-card numbering needed. */
 .fb-note-card{padding:10px 0;border-bottom:1px dashed var(--border);}
 .fb-note-card:last-child{border-bottom:none;}
-.fb-note-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;}
+.fb-note-meta{font-size:12px;color:var(--text-faint);margin-bottom:4px;}
 .fb-note-text{font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.5;}
 
 /* Feedback mini-form, inside the L2 detail panel -- every allow-listed role
@@ -365,8 +366,8 @@ body{
   width:100%;justify-content:center;margin:10px 0 0;cursor:pointer;font:inherit;
 }
 .fb-form button.gmaps-btn:disabled{opacity:.6;cursor:default;}
-.fb-form-caption{font-size:11px;color:var(--text-faint);line-height:1.5;margin-top:2px;}
-.fb-form-counter{font-size:10.5px;color:var(--text-faint);text-align:right;margin-top:3px;}
+.fb-form-caption{font-size:12px;color:var(--text-faint);line-height:1.5;margin-top:2px;}
+.fb-form-counter{font-size:12px;color:var(--text-faint);text-align:right;margin-top:3px;}
 
 /* Note preview line in the feedback list -- one clamped line, not the full
    text (that's what opening the row is for), so a leader can still scan
@@ -427,18 +428,18 @@ body{
 
 .district-label{
   display:block;transform:translate(-50%,-50%);white-space:nowrap;
-  font-size:12.5px;font-weight:700;letter-spacing:.02em;
+  font-size:12.5px;font-weight:700;letter-spacing:0;
   text-shadow:0 1px 0 var(--surface), 0 -1px 0 var(--surface), 1px 0 0 var(--surface), -1px 0 0 var(--surface), 0 2px 6px rgba(0,0,0,.25);
   pointer-events:none;
 }
 .map-legend{
   position:absolute;left:16px;bottom:16px;z-index:800;
   background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:10px 13px;box-shadow:var(--shadow-sm);font-size:11.5px;color:var(--text-muted);
+  padding:10px 13px;box-shadow:var(--shadow-sm);font-size:12px;color:var(--text-muted);
   width:230px;
 }
 .map-legend summary{
-  font-weight:700;color:var(--text);font-size:11.5px;
+  font-weight:700;color:var(--text);font-size:12px;
   cursor:pointer;list-style:none;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   -webkit-tap-highlight-color:transparent;
@@ -455,7 +456,7 @@ body{
 .legend-body .row i{width:15px;height:15px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);flex:0 0 15px;border:1.5px solid var(--surface);box-shadow:0 0 0 1px rgba(10,16,22,.15);}
 .legend-scale{margin-top:2px;}
 .legend-bar{height:9px;border-radius:5px;background:linear-gradient(90deg, var(--tier-lo), var(--tier-hi));}
-.legend-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:var(--text-faint);}
+.legend-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:12px;color:var(--text-faint);}
 .map-legend .foot{margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);color:var(--text-faint);line-height:1.5;}
 
 /* ---------- Detail panel ---------- */
@@ -474,7 +475,7 @@ body{
   display:flex;align-items:flex-start;justify-content:space-between;
   padding:16px 16px 12px;border-bottom:1px solid var(--border-soft);flex:0 0 auto;
 }
-.detail-village{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
+.detail-village{font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--accent);margin-bottom:2px;}
 .detail-id{font-family:"JetBrains Mono",monospace;font-size:16px;font-weight:600;}
 .detail-loc{font-size:12px;color:var(--text-muted);margin-top:4px;}
 .detail-close{
@@ -500,7 +501,7 @@ body{
   padding:9px 11px;
 }
 .stat-tile.alt{border-left-color:var(--arch-replace);}
-.stat-tile .lbl{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);}
+.stat-tile .lbl{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text-faint);}
 .stat-tile .val{font-size:15px;font-weight:700;margin-top:3px;line-height:1.25;}
 .stat-tile .val.mono{font-family:"JetBrains Mono",monospace;font-size:13.5px;}
 
@@ -508,7 +509,7 @@ body{
 .promo-head h3{margin:0;font-size:13px;font-weight:700;}
 .badge{
   display:inline-block;vertical-align:middle;
-  font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);
+  font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent);
   padding:3px 9px;border-radius:999px;white-space:nowrap;
 }
 
@@ -526,7 +527,7 @@ body{
 .l2-popup-wrap .leaflet-popup-tip{background:var(--surface);}
 .l2-popup-wrap .leaflet-popup-content{margin:12px 14px;min-width:160px;}
 .l2-popup-wrap .leaflet-popup-close-button{color:var(--text-muted) !important;}
-.l2-popup-village{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
+.l2-popup-village{font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--accent);margin-bottom:2px;}
 .l2-popup-id{font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
 .l2-popup-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .l2-popup-arpa{font-size:12px;color:var(--text-muted);}
@@ -536,10 +537,10 @@ body{
   cursor:pointer;text-align:center;box-sizing:border-box;
 }
 .l2-popup-btn:hover{background:var(--surface-3);border-color:var(--accent);}
-table.promo-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+table.promo-table{width:100%;border-collapse:collapse;font-size:12px;}
 table.promo-table thead th{
   background:var(--amber-soft);color:var(--amber-ink);
-  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  font-size:12px;font-weight:700;text-transform:none;letter-spacing:0;
   text-align:left;padding:7px 6px;border-bottom:1px solid var(--border);
   position:sticky;top:0;
 }
@@ -555,7 +556,7 @@ table.promo-table td.special{font-weight:700;}
 
 .detail-foot{
   margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);
-  font-size:11px;color:var(--text-faint);line-height:1.6;
+  font-size:12px;color:var(--text-faint);line-height:1.6;
 }
 
 /* scrollbars */
@@ -563,7 +564,7 @@ table.promo-table td.special{font-weight:700;}
 .stop-list::-webkit-scrollbar-thumb, .detail-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
 
 /* ---------- Mobile tab bar (map/list) ---------- */
-/* Below 640px, sidebar-next-to-map simply doesn't fit — a 352px sidebar
+/* Below 640px, sidebar-next-to-map simply doesn't fit, a 352px sidebar
    alone is wider than most phones. Below that width the two panes become
    full-screen, mutually exclusive views, switched with this floating bar
    instead of shown side by side. Hidden entirely above that width, where
@@ -595,7 +596,7 @@ table.promo-table td.special{font-weight:700;}
 @media (max-width:640px){
   .brand-sub{display:none;}
   .topbar{padding:0 12px;gap:10px;}
-  /* Not shrunk, dropped — the count pill plus the title plus the theme
+  /* Not shrunk, dropped, the count pill plus the title plus the theme
      toggle don't fit a phone width even shrunk, and the List view (which a
      mobile visitor is one tap from) already shows the count. */
   .topbar-stat{display:none;}
@@ -631,7 +632,7 @@ table.promo-table td.special{font-weight:700;}
     <h1>L2 Discount <span>Map</span></h1>
     <p>Sign in with your work Google account to view the map. Nothing loads until you're signed in.</p>
     <div id="gsiButton"></div>
-    <div id="loginStatus" class="login-status"></div>
+    <div id="loginStatus" class="login-status" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -701,7 +702,7 @@ table.promo-table td.special{font-weight:700;}
           <option value="dist">Sort: district</option>
         </select>
       </div>
-      <div class="stop-list mode-discount" id="stopList"></div>
+      <div class="stop-list mode-discount" id="stopList" aria-live="polite"></div>
 
       <div class="sidebar-section mode-feedback">
         <div class="stat-grid" id="feedbackStats"></div>
@@ -771,7 +772,7 @@ table.promo-table td.special{font-weight:700;}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-/* ===== L2 splitters + the Condition lookup table — fetched live after sign-in
+/* ===== L2 splitters + the Condition lookup table, fetched live after sign-in
    from a Google Sheet via an Apps Script Web App (myL2Data action). This file
    ships with none of that data embedded: it's internal discount-targeting
    data and this repo is public. See README.md for how the pipeline works
@@ -864,12 +865,12 @@ try{
   if(saved==='light' || saved==='dark') root.setAttribute('data-theme', saved);
 }catch(e){}
 
-/* Two real tile sets, not one set with a CSS filter for dark mode — an
+/* Two real tile sets, not one set with a CSS filter for dark mode, an
    invert()/hue-rotate() filter over live-panning tiles turned out to be
    genuinely brutal on phone GPUs (fine on desktop, laggy enough on mobile
    to be the whole complaint). Esri's gray-canvas basemap is free/no-key
    and has a real dark variant, at the cost of a lower native zoom (16 vs.
-   OSM's 19) — a trade worth making for smooth panning on a phone. */
+   OSM's 19), a trade worth making for smooth panning on a phone. */
 const TILE_CONFIG = {
   light: { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom:19,
            attribution:'&copy; OpenStreetMap contributors' },
@@ -877,20 +878,20 @@ const TILE_CONFIG = {
            attribution:'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ' }
 };
 /* Rotated + drop-shadowed pins are noticeably heavier to paint than the
-   plain-circle fallback — fine in bulk on a desktop GPU, not on a phone's,
+   plain-circle fallback, fine in bulk on a desktop GPU, not on a phone's,
    so touch devices switch to the cheap shape at a much lower pin count. */
 const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 /* map/tileLayer/districtAreaLayer/pinLayer are only actually constructed
-   inside initApp(), once real data exists to size/populate them with — but
+   inside initApp(), once real data exists to size/populate them with, but
    every function below is safe to define now, since none of them execute
    until called (all interaction is blocked behind #loginGate until then). */
 let map, tileLayer, districtAreaLayer, pinLayer, feedbackPinLayer;
 
-/* ===== district boundaries — real อำเภอ administrative outlines (Royal Thai
+/* ===== district boundaries, real อำเภอ administrative outlines (Royal Thai
    Survey Dept / UN OCHA COD-AB Thailand, via data.humdata.org). Public
-   government data, not sensitive, so — same as this project's Route Planner
-   sibling — these stay embedded even though the L2/discount data doesn't. ===== */
+   government data, not sensitive, so, same as this project's Route Planner
+   sibling, these stay embedded even though the L2/discount data doesn't. ===== */
 const DISTRICT_BOUNDARIES = {"Bang Bua Thong":{"type":"Polygon","coordinates":[[[100.44910048300011,13.891590915000052],[100.44948930900011,13.884201825000105],[100.44731361000015,13.88251838900004],[100.44899662900019,13.87919167500013],[100.44810378700004,13.875339367000095],[100.44904600300003,13.874381648000167],[100.44823238300006,13.871958449000147],[100.44912367400013,13.871630066000023],[100.44833689900014,13.870640465000122],[100.45042627200013,13.868232178000085],[100.44792779800014,13.867365125000049],[100.44508763500005,13.871046695000189],[100.43889677700014,13.871836332000044],[100.43280380000004,13.869047094],[100.42870252200015,13.86301818700008],[100.42277453100007,13.866456010000036],[100.42281061000011,13.86851200000018],[100.41910471500017,13.869218943000135],[100.42028884800015,13.87024433200014],[100.42013749800009,13.871801568000024],[100.42131271600016,13.87194209300003],[100.42115587500007,13.872959392000098],[100.41929180900019,13.87335731200011],[100.41864509100014,13.876232004000144],[100.41970805500017,13.8769671],[100.41235844600004,13.879524435000121],[100.41227722200006,13.880825989000186],[100.4102961480001,13.882154712000101],[100.40599774900016,13.883059644000184],[100.40484685400003,13.884317022000118],[100.3972258280001,13.887462827000093],[100.39647403900017,13.889358092000123],[100.39704704700011,13.891174613000032],[100.3941506910001,13.89322971700011],[100.38938412800019,13.89535583900016],[100.37714886600014,13.897841183000082],[100.37428525600018,13.902990408999983],[100.37324671600004,13.911290256000086],[100.37194322600004,13.911599960000103],[100.36922835900003,13.911484285000029],[100.36879631800008,13.906866661000095],[100.3636342370001,13.889934117999985],[100.36413702600004,13.882491199000128],[100.36199166100005,13.878713196999968],[100.35733207300018,13.878599336000093],[100.35520945900004,13.882356221000123],[100.3417628900001,13.883369329000118],[100.3414109270002,13.889987387000076],[100.33268840500006,13.911881863000076],[100.3305507450001,13.921530104000169],[100.34101133500019,13.930645387000027],[100.35623821600018,13.949894720000145],[100.35000773700006,13.95387480100004],[100.35497645600003,13.96193755400003],[100.35605212100018,13.975217263000047],[100.35537581900013,13.984950114000014],[100.34964639500004,13.996636058999968],[100.35612955400006,14.000763684000162],[100.36133115900014,13.994314597000084],[100.36523922200013,13.992047828000068],[100.39462669800014,13.985804759000132],[100.39863847400011,13.983371719000104],[100.40324107500015,13.98314619700011],[100.40907743000014,13.985235969000144],[100.41407528100007,13.984563912000056],[100.41944425899999,13.98104008100006],[100.41996202400014,13.9787782840001],[100.42272967400015,13.97740630300018],[100.42684605500011,13.973088010000026],[100.42844957300014,13.969863807000138],[100.43068803000011,13.968900689],[100.43565660700011,13.963691019000066],[100.43797072900009,13.959425353000086],[100.44593706400008,13.952121011000088],[100.44580787400008,13.951297858000089],[100.45076997000012,13.94820221000009],[100.44203543300011,13.932043988000032],[100.44431230800012,13.930906393000157],[100.44158654900014,13.924625670000182],[100.44132454200019,13.920603310000047],[100.44584417500016,13.919935206000048],[100.43934527400006,13.899410289000059],[100.4442358010001,13.897845653000104],[100.44785001000008,13.897937541999966],[100.44910048300011,13.891590915000052]]]},"Sai Noi":{"type":"Polygon","coordinates":[[[100.33102436300004,13.918466175000049],[100.33462277400014,13.906293436000169],[100.3414109270002,13.889987387000076],[100.3417628900001,13.883369329000118],[100.33506287700004,13.883122782000044],[100.33501711600007,13.881431098000064],[100.33104012500013,13.881548259000112],[100.32793931700007,13.882434476000128],[100.32668260600008,13.88565129],[100.32214279400017,13.884761725000033],[100.3223988690001,13.877365664000138],[100.31138765700013,13.87639631900015],[100.30198478100016,13.878833849000046],[100.29964266400009,13.871904782000058],[100.29681910800008,13.869552457000168],[100.27612257700014,13.912939906000133],[100.27328461100012,13.915901944999973],[100.26544878200008,13.920607142],[100.27309634300019,13.932925326000145],[100.28626218,13.946299378000049],[100.29821991900008,13.963371049000102],[100.28626141900003,13.97135897100003],[100.27500920200009,13.981863929000042],[100.27039378600017,13.987582628999974],[100.26773482700014,13.993965448999973],[100.26242900800014,13.99812071100007],[100.26558179900019,14.001208043000076],[100.26328989400014,14.004354847000059],[100.26650495300015,14.007957476000115],[100.2640663210002,14.010168096000086],[100.26912364500015,14.018907233999983],[100.26969787000013,14.023421993000056],[100.27695656100019,14.024089279000066],[100.26894857600013,14.036544455000126],[100.26416128900007,14.060159499000065],[100.27228966500007,14.068161779000093],[100.27196986600018,14.072297068000069],[100.27395141000017,14.073843558000135],[100.27597274300018,14.079559906000043],[100.27710665600011,14.101211371000147],[100.28372984300017,14.100698103000127],[100.28178118400018,14.127013465000175],[100.29606270400018,14.139312669000162],[100.29815951600011,14.140205876000039],[100.3011002630002,14.139799175000064],[100.32084020400004,14.129635987000086],[100.33314749200014,14.12893164000019],[100.34049259000017,14.12140077100014],[100.34410206200005,14.114787454000123],[100.34066084600005,14.093835017000174],[100.33498712200009,14.078261528999974],[100.33241190500007,14.066887020000081],[100.33162925699997,14.056427260000078],[100.33667731000014,14.037664127000028],[100.34427547100006,14.02090803599998],[100.35576105900003,14.000445546000151],[100.34964639500004,13.996636058999968],[100.35537581900013,13.984950114000014],[100.35605212100018,13.975217263000047],[100.35497645600003,13.96193755400003],[100.35000773700006,13.95387480100004],[100.35623821600018,13.949894720000145],[100.34101133500019,13.930645387000027],[100.3305507450001,13.921530104000169],[100.33102436300004,13.918466175000049]]]},"Pak Kret":{"type":"Polygon","coordinates":[[[100.49037630300006,13.894244293000042],[100.48468860300017,13.885474996000028],[100.4799244300001,13.88825909700006],[100.47701205700008,13.891441918000055],[100.47434590199998,13.892160136000143],[100.47120518700012,13.891541761000042],[100.466272571,13.892870667000068],[100.46308148200006,13.892608074000066],[100.45870131400017,13.890303956000025],[100.44963300400019,13.889118015000065],[100.44785001000008,13.897937541999966],[100.4442358010001,13.897845653000104],[100.43934527400006,13.899410289000059],[100.44584417500016,13.919935206000048],[100.44132454200019,13.920603310000047],[100.44158654900014,13.924625670000182],[100.44431230800012,13.930906393000157],[100.44203543300011,13.932043988000032],[100.45076997000012,13.94820221000009],[100.44580787400008,13.951297858000089],[100.44593706400008,13.952121011000088],[100.43797072900009,13.959425353000086],[100.43566784600006,13.963678732000062],[100.43068803000011,13.968900689],[100.42846148100006,13.969850987000143],[100.42701694700008,13.972900136000078],[100.42272967400015,13.97740630300018],[100.41998628300007,13.97875292600014],[100.4196171270001,13.980832937000173],[100.41676133400017,13.983226147000153],[100.40964613500006,13.98523808200008],[100.40324107500015,13.98314619700011],[100.39863847400011,13.983371719000104],[100.39466185100014,13.98579474000013],[100.38049918000007,13.988812153000083],[100.38108060700011,13.994775593000043],[100.43478932400018,13.981151313000055],[100.45347629700012,13.967342546000168],[100.45661667200017,13.97082388300015],[100.45680198500014,13.974939482000082],[100.45792789500007,13.977517345000138],[100.45839197400016,13.97626896000014],[100.4606124840002,13.976448684000047],[100.46241655100016,13.970694653000123],[100.4648833290002,13.971420494000029],[100.46548102400016,13.970293370000036],[100.4669445720001,13.970493063000163],[100.46693108900013,13.968707405000032],[100.48623542500007,13.95012755600004],[100.48859645900006,13.946083016999978],[100.48744699500014,13.944844191000186],[100.48912565600006,13.942675390000034],[100.49144561900005,13.940900820000138],[100.49785022100008,13.939074628000185],[100.50018543500005,13.936982177000175],[100.50178209800009,13.936718788000121],[100.50457148500004,13.940604276999977],[100.50964805600006,13.94343515300011],[100.525787902,13.943629395000187],[100.53152072000006,13.945224031000123],[100.53706331000018,13.949890756000173],[100.53902738900007,13.955698917000177],[100.54204516400006,13.955478970000172],[100.54140587100005,13.95463304599997],[100.54202058400017,13.953578428000128],[100.54404924800019,13.954413181000177],[100.54452506600012,13.952933847000168],[100.55333780900014,13.951387718000035],[100.55417665300013,13.95037965900002],[100.55482076100014,13.951562705000072],[100.55711072200012,13.949833012],[100.56007828600019,13.950674485000093],[100.56161613700016,13.949380860000076],[100.56754835800007,13.951203277000161],[100.5502851820001,13.877585603000114],[100.54879741400009,13.877885983000112],[100.54651377400018,13.880279493000103],[100.50523248900004,13.89131874700007],[100.50087814300014,13.894271335000155],[100.49730918400019,13.895168957000124],[100.49037630300006,13.894244293000042]]]}};
 const DISTRICT_COLORS = { 'Sai Noi': '#e0453c', 'Pak Kret': '#2f6fed', 'Bang Bua Thong': '#1ea672' };
 
@@ -925,7 +926,7 @@ function renderDistrictAreas(){
 
 /* appInitialized guards applyTheme (wired below, reachable from the login
    card itself) against running its map-refresh half before initApp() has
-   ever created the map/pins — the theme *attribute* still flips instantly
+   ever created the map/pins, the theme *attribute* still flips instantly
    either way, so the login card itself responds to the toggle immediately. */
 let appInitialized = false;
 
@@ -946,10 +947,10 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
   applyTheme(effectiveTheme()==='dark' ? 'light' : 'dark');
 });
 
-/* ===== pins (no clustering — every L2 gets its own pin, always) =====
+/* ===== pins (no clustering, every L2 gets its own pin, always) =====
    Pin color is a genuine function of each L2's own discPct (10%-30%, the full
    nonzero range found anywhere in the Condition table), interpolated live
-   between the --tier-lo/--tier-hi theme tokens — not a fixed per-value class. */
+   between the --tier-lo/--tier-hi theme tokens, not a fixed per-value class. */
 const DISC_DOMAIN = [10, 30];
 
 function hexToRgb(hex){
@@ -961,7 +962,7 @@ function mixHex(hexA, hexB, t){
   const r=Math.round(a.r+(b.r-a.r)*t), g=Math.round(a.g+(b.g-a.g)*t), bl=Math.round(a.b+(b.b-a.b)*t);
   return `rgb(${r},${g},${bl})`;
 }
-/* getComputedStyle() is expensive — read the gradient endpoints from CSS once
+/* getComputedStyle() is expensive, read the gradient endpoints from CSS once
    (at load, and again on theme toggle) rather than on every pin/list-row. */
 let tierEndpoints = null;
 function refreshTierEndpoints(){
@@ -995,10 +996,10 @@ function pinIconDetailed(discPct100, selected){
     popupAnchor: [0,-36]
   });
 }
-/* Cheap fallback shape (no rotate, no box-shadow — the two priciest things to
+/* Cheap fallback shape (no rotate, no box-shadow, the two priciest things to
    paint hundreds of at once) used whenever a lot of pins share the viewport;
    swaps back to the full teardrop pin once panning/zooming narrows it down.
-   Desktop only — touch devices use canvas-rendered pins below instead. */
+   Desktop only, touch devices use canvas-rendered pins below instead. */
 function pinIconSimple(discPct100){
   const c = tierColors(discPct100);
   return L.divIcon({
@@ -1023,7 +1024,7 @@ function markerIcon(d, simple, selected){
    click/tooltip all keep working exactly as Leaflet already handles them)
    and only adds one thing on top: the discount-% text, drawn straight into
    the same canvas pass. Desktop keeps the nicer divIcon teardrop pin above
-   (its performance was never the complaint) — this path is IS_TOUCH-only.
+   (its performance was never the complaint), this path is IS_TOUCH-only.
    canvasRenderer itself is created inside initApp(), once map exists (see
    there for why -- it needs its own pane, above the district boundaries'). */
 let canvasRenderer = null;
@@ -1054,7 +1055,7 @@ function makeTouchPin(d){
 }
 
 /* Applies both the selected/unselected look AND current theme colors (so
-   this also doubles as the theme-refresh path — see applyTheme) to one
+   this also doubles as the theme-refresh path, see applyTheme) to one
    marker, DOM or canvas, whichever this device is using. */
 function refreshMarkerStyle(marker, selected){
   const d = DATA[marker.l2idx];
@@ -1103,7 +1104,7 @@ function sortedFiltered(){
 const portLabel = p => p==='01_High ≥40%' ? 'High port ≥40%' : 'Low port <40%';
 const arpaGroupLabel = g => g.replace(/^\d+_/, '').replace(/_/g, ' ');
 
-/* Village name is the human-readable handle for an L2 — lead with it wherever
+/* Village name is the human-readable handle for an L2, lead with it wherever
    we have one, falling back to the subdistrict, which is still a real
    place, never to the raw L2 code. */
 function locationLabel(d){
@@ -1131,7 +1132,7 @@ function mobilePopupHtml(d){
 }
 
 /* Only pins inside the current viewport (+ a buffer) are ever added to the
-   map — keeping off-screen ones out of the DOM is what keeps panning/zooming
+   map, keeping off-screen ones out of the DOM is what keeps panning/zooming
    smooth. The sidebar list is unaffected; it always reflects the full
    filtered set regardless of what's in view. */
 let currentFilteredIdx = [];
@@ -1155,11 +1156,11 @@ function updateVisiblePins(){
     // Add what's newly needed right now, synchronously -- that's what the
     // user is actually waiting to see. Removing what's no longer needed is
     // deferred a frame: at the initial full-extent view essentially every
-    // pin is "visible" (correctly — you can see everything), so a big jump
+    // pin is "visible" (correctly, you can see everything), so a big jump
     // away from that view (e.g. picking a stop from the List) means removing
     // over a thousand layers in one go. That bulk removal was the actual
     // remaining freeze, not a DOM-vs-canvas thing (both paths diff the same
-    // way) — and it's invisible work either way, since those pins are
+    // way), and it's invisible work either way, since those pins are
     // already off-screen the moment the view moves. Re-checking against the
     // live visiblePinSet (not the captured list) inside the callback covers
     // the case where a later pan/zoom needs one of them visible again before
@@ -1236,7 +1237,7 @@ function clearSelectedIcon(){
 
 /* fromList: true only when called from the sidebar list's click handler
    (not a pin tap). On touch, that first tap just shows WHERE the stop is —
-   moved to, highlighted — without also opening the detail card in the same
+   moved to, highlighted, without also opening the detail card in the same
    breath; the card opens on a second tap, on the now-visible pin itself.
    Desktop opens it immediately either way, same as a pin tap always does —
    there's no separate "find it on the map" step to begin with there. */
@@ -1367,7 +1368,7 @@ function openDetail(d){
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div class="detail-foot">Prices in THB/month, 24-month contract. Looked up from the Condition sheet by Archetype (${d.arch}) &times; ARPA band (${arpaGroupLabel(d.arpaGroup)}) &times; Port group (${portLabel(d.port)}). Synced live from a Google Sheet — see the repo README.</div>
+      <div class="detail-foot">Prices in THB/month, 24-month contract. Looked up from the Condition sheet by Archetype (${d.arch}) &times; ARPA band (${arpaGroupLabel(d.arpaGroup)}) &times; Port group (${portLabel(d.port)}). Synced live from a Google Sheet, see the repo README.</div>
       <div class="fb-form">
         <div class="promo-head"><h3>Add field feedback</h3></div>
         <div class="fb-form-caption">Visible to your team leads, along with your location at the time you submit.</div>
@@ -1428,8 +1429,8 @@ function submitFeedbackFor(d){
       btn.disabled = false;
       btn.textContent = 'Submit feedback';
       showToast(
-        err.code === err.PERMISSION_DENIED ? 'Location permission denied — feedback needs your location.' :
-        err.code === err.TIMEOUT ? 'Location took too long — try again.' :
+        err.code === err.PERMISSION_DENIED ? 'Location permission denied, feedback needs your location.' :
+        err.code === err.TIMEOUT ? 'Location took too long, try again.' :
         'Could not get your location.'
       );
     },
@@ -1443,11 +1444,11 @@ function closeDetail(){
   if(selectedRowEl){ selectedRowEl.classList.remove('selected'); selectedRowEl = null; }
 }
 
-/* ===== init — runs once, after a successful sign-in fetch has populated
+/* ===== init, runs once, after a successful sign-in fetch has populated
    DATA/CONDITIONS. Everything above this point only defines functions; this
    is the first thing that actually touches the map or the DOM data lives in. ===== */
 /* Map and List are two full-screen, mutually exclusive views below 640px
-   (see the mobile breakpoint in <style>) — this just toggles which one's
+   (see the mobile breakpoint in <style>), this just toggles which one's
    showing. Leaflet caches its container size, so switching back to Map
    after it sat display:none needs an explicit re-measure or it renders
    blank/mis-sized until the next manual pan/zoom. */
@@ -1505,13 +1506,13 @@ function setMobileView(view, afterReveal){
   return returningToMap;
 }
 
-/* Less to look at on first paint on a small screen — still one tap to open. */
+/* Less to look at on first paint on a small screen, still one tap to open. */
 if(window.matchMedia('(max-width:640px)').matches){
   const legend = document.querySelector('.map-legend');
   if(legend) legend.removeAttribute('open');
 }
 
-/* ===== "you are here" — a live GPS marker, separate from the L2 pins =====
+/* ===== "you are here", a live GPS marker, separate from the L2 pins =====
    A plain divIcon regardless of IS_TOUCH: there's only ever one of these on
    screen at a time, so the DOM-per-marker cost that matters for 1,166 L2
    pins doesn't apply here at all. */
@@ -1576,7 +1577,7 @@ function onLocateClick(){
       geoWatchId = null;
       showToast(
         err.code === err.PERMISSION_DENIED ? 'Location permission denied.' :
-        err.code === err.TIMEOUT ? 'Location took too long — try again.' :
+        err.code === err.TIMEOUT ? 'Location took too long, try again.' :
         'Could not get your location.'
       );
     },
@@ -2065,7 +2066,7 @@ function initApp(){
 
 /* ===== Google Sign-In =====
    Fill these in once you've completed the Google Cloud / Apps Script setup
-   in README.md — the page won't work (and says so) until you do. */
+   in README.md, the page won't work (and says so) until you do. */
 const GOOGLE_CLIENT_ID = "1038630803957-43n9bk4kp78e7lid6hm084cjtc34c4qe.apps.googleusercontent.com";
 const DEFAULT_SYNC_URL = "https://script.google.com/macros/s/AKfycbwBmi2TmYQwUzkYBWlkSo5MtWPfk43GQdxHbeIrVP7I1MHEoTbtWnHsDsA6_0a-9zDkeQ/exec";
 
@@ -2135,7 +2136,7 @@ async function onGoogleSignIn(response){
 
 window.addEventListener('load', ()=>{
   if(GOOGLE_CLIENT_ID.indexOf('REPLACE_WITH')===0){
-    showLoginStatus('This page isn’t configured yet — GOOGLE_CLIENT_ID needs to be set. See the repo README.', true);
+    showLoginStatus('This page isn’t configured yet, GOOGLE_CLIENT_ID needs to be set. See the repo README.', true);
     return;
   }
   if(!(window.google && google.accounts && google.accounts.id)){
@@ -2146,5 +2147,34 @@ window.addEventListener('load', ()=>{
   google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large' });
 });
 </script>
+<style id="redesign">
+/* ===== redesign: shared behaviour ===== */
+:focus-visible{outline:2px solid var(--accent,#0f766e);outline-offset:2px;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.ic-refresh{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-gear{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-cloud{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M178.34,165.66,160,147.31V208a8,8,0,0,1-16,0V147.31l-18.34,18.35a8,8,0,0,1-11.32-11.32l32-32a8,8,0,0,1,11.32,0l32,32a8,8,0,0,1-11.32,11.32ZM160,40A88.08,88.08,0,0,0,81.29,88.68,64,64,0,1,0,72,216h40a8,8,0,0,0,0-16H72a48,48,0,0,1,0-96c1.1,0,2.2,0,3.29.12A88,88,0,0,0,72,128a8,8,0,0,0,16,0,72,72,0,1,1,100.8,66,8,8,0,0,0,3.2,15.34,7.9,7.9,0,0,0,3.2-.68A88,88,0,0,0,160,40Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-bug{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M144,92a12,12,0,1,1,12,12A12,12,0,0,1,144,92ZM100,80a12,12,0,1,0,12,12A12,12,0,0,0,100,80Zm116,64A87.76,87.76,0,0,1,213,167l22.24,9.72A8,8,0,0,1,232,192a7.89,7.89,0,0,1-3.2-.67L207.38,182a88,88,0,0,1-158.76,0L27.2,191.33A7.89,7.89,0,0,1,24,192a8,8,0,0,1-3.2-15.33L43,167A87.76,87.76,0,0,1,40,144v-8H16a8,8,0,0,1,0-16H40v-8a87.76,87.76,0,0,1,3-23L20.8,79.33a8,8,0,1,1,6.4-14.66L48.62,74a88,88,0,0,1,158.76,0l21.42-9.36a8,8,0,0,1,6.4,14.66L213,89.05a87.76,87.76,0,0,1,3,23v8h24a8,8,0,0,1,0,16H216ZM56,120H200v-8a72,72,0,0,0-144,0Zm64,95.54V136H56v8A72.08,72.08,0,0,0,120,215.54ZM200,144v-8H136v79.54A72.08,72.08,0,0,0,200,144Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-doc{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-export{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M216,112v96a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V112A16,16,0,0,1,56,96H80a8,8,0,0,1,0,16H56v96H200V112H176a8,8,0,0,1,0-16h24A16,16,0,0,1,216,112ZM93.66,69.66,120,43.31V136a8,8,0,0,0,16,0V43.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,69.66Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-sad{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.08,64a8,8,0,1,1-13.84,8c-7.47-12.91-19.21-20-33.08-20s-25.61,7.1-33.08,20a8,8,0,1,1-13.84-8c10.29-17.79,27.39-28,46.92-28S164.63,154.2,174.92,172Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-pencil{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-check{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-x{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-info{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-warn{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-search{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-pin{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+.ic-tag{--ic:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22 fill=%22black%22%3E%3Cpath d=%22M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm106.18,74.58A8,8,0,0,0,144,136v58.66L112,216V136a8,8,0,0,0-2.16-5.47L40,56H216Z%22/%3E%3C/svg%3E");display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;flex:none}
+
+body,button,input,select,textarea{font-family:"IBM Plex Sans Thai","Kanit",system-ui,sans-serif}
+.brand-name,.stop-disc,.stat-tile .val{font-family:"Kanit","IBM Plex Sans Thai",sans-serif}
+.legend-ticks,.legend-ticks span{font-family:"IBM Plex Sans Thai","Kanit",sans-serif!important}
+/* keyboard focus was removed (outline:none) and never replaced */
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.stop-row:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.topbar-search input:focus,.sidebar-search input:focus{border-color:var(--accent)}
+.empty-note{padding:20px 16px;color:var(--text-muted);text-align:center}
+
+</style>
 </body>
 </html>
