@@ -129,8 +129,19 @@ function doPost(e) {
 
     return jsonResponse_({ ok: false, error: "unknown action" });
   } catch (err) {
-    return jsonResponse_({ ok: false, error: String(err) });
+    return errorResponse_(err);
   }
+}
+
+// Only messages we wrote for the caller go back as-is; anything else (Apps Script / Sheets internals,
+// quota names, TypeErrors, "script property is not set") is logged for the owner and answered with a
+// generic code, so a stranger can't learn how the backend is set up from its error text.
+var CALLER_ERROR_RE = /^(forbidden|not_signed_in|no_access)/;
+function errorResponse_(err) {
+  var msg = String((err && err.message) || err);
+  if (CALLER_ERROR_RE.test(msg)) return jsonResponse_({ ok: false, error: msg });
+  console.error(msg);
+  return jsonResponse_({ ok: false, error: "server_error" });
 }
 
 function doGet(e) {
@@ -300,7 +311,13 @@ function submitFeedback_(idToken, l2id, notes, lat, lon, accuracy) {
     };
   }
   if (!l2id) return { ok: false, error: "missing_l2id" };
+  // L2 ids are short alphanumeric codes (e.g. NTB06X3764D). Anything else is not from the page.
+  l2id = String(l2id);
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(l2id)) return { ok: false, error: "invalid_l2id" };
   if (!notes || !String(notes).trim()) return { ok: false, error: "missing_notes" };
+  // The page caps notes at 500 characters; the server enforces its own limit (a bigger cell would
+  // make the write throw and could be used to bloat the Sheet).
+  if (String(notes).trim().length > FEEDBACK_NOTES_MAX) return { ok: false, error: "notes_too_long" };
 
   var l2 = findL2ById_(l2id);
   appendFeedbackRow_({
@@ -313,11 +330,20 @@ function submitFeedback_(idToken, l2id, notes, lat, lon, accuracy) {
     l2Lat: l2 ? l2.lat : null,
     l2Lon: l2 ? l2.lon : null,
     notes: String(notes).trim(),
-    lat: lat != null ? Number(lat) : null,
-    lon: lon != null ? Number(lon) : null,
-    accuracy: accuracy != null ? Number(accuracy) : null,
+    lat: finiteOrNull_(lat, -90, 90),
+    lon: finiteOrNull_(lon, -180, 180),
+    accuracy: finiteOrNull_(accuracy, 0, 1e7),
   });
   return { ok: true };
+}
+
+var FEEDBACK_NOTES_MAX = 1000;
+
+// A real number inside [lo, hi], else null (NaN / Infinity / out of range / not a number never reach the Sheet).
+function finiteOrNull_(v, lo, hi) {
+  if (v == null || v === "") return null;
+  var n = Number(v);
+  return isFinite(n) && n >= lo && n <= hi ? n : null;
 }
 
 // Leader-only. A subordinate calling this directly (not through the page's
@@ -375,9 +401,17 @@ function appendFeedbackRow_(f) {
   // Plain-text format this row before writing -- same reasoning as
   // writePointsSheet_/writeConditionSheet_: Sheets will otherwise
   // "helpfully" reinterpret an ID-like string as a number or date.
-  var range = sheet.getRange(sheet.getLastRow() + 1, 1, 1, FEEDBACK_HEADER.length);
-  range.setNumberFormat("@");
-  range.setValues([row]);
+  // Under the script lock: two notes submitted at the same moment used to read the same
+  // "last row" and the second overwrote the first.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var range = sheet.getRange(sheet.getLastRow() + 1, 1, 1, FEEDBACK_HEADER.length);
+    range.setNumberFormat("@");
+    range.setValues([row]);
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function readFeedback_() {

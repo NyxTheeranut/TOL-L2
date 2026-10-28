@@ -1120,8 +1120,8 @@ function locationLabel(d){
 function mobilePopupHtml(d){
   const loc = locationLabel(d);
   return `<div class="l2-popup">
-    <div class="l2-popup-village">${loc.primary}</div>
-    <div class="l2-popup-id">${d.id}</div>
+    <div class="l2-popup-village">${escapeHtml(loc.primary)}</div>
+    <div class="l2-popup-id">${escapeHtml(d.id)}</div>
     <div class="l2-popup-meta">
       <span class="badge">${Math.round(d.cond.discPct*100)}% off</span>
       <span class="l2-popup-arpa tnum">฿${d.arpa} ARPA</span>
@@ -1204,13 +1204,13 @@ function render(){
     const rows = idx.map(i=>{
       const d = DATA[i];
       const sel = i===state.selected ? ' selected':'';
-      const villageLine = d.village ? `<div class="stop-village" title="${d.village}">${d.village}</div>` : '';
+      const villageLine = d.village ? `<div class="stop-village" title="${escapeHtml(d.village)}">${escapeHtml(d.village)}</div>` : '';
       return `<div class="stop-row${sel}" data-idx="${i}">
         <span class="stop-dot" style="background:${tierColors(d.cond.discPct*100).bg};"></span>
         <div class="stop-main">
-          <div class="stop-id mono">${d.id}</div>
+          <div class="stop-id mono">${escapeHtml(d.id)}</div>
           ${villageLine}
-          <div class="stop-loc">${d.adm3}, ${d.adm2} &middot; ${d.arch}</div>
+          <div class="stop-loc">${escapeHtml(d.adm3)}, ${escapeHtml(d.adm2)} &middot; ${escapeHtml(d.arch)}</div>
         </div>
         <div class="stop-meta">
           <div class="stop-disc tnum">${Math.round(d.cond.discPct*100)}%</div>
@@ -1334,9 +1334,9 @@ function openDetail(d){
   panelEl.innerHTML = `
     <div class="detail-head">
       <div>
-        ${d.village ? `<div class="detail-village">${d.village}</div>` : ''}
-        <div class="detail-id">${d.id}</div>
-        <div class="detail-loc">${d.adm3}, ${d.adm2} &middot; Nonthaburi</div>
+        ${d.village ? `<div class="detail-village">${escapeHtml(d.village)}</div>` : ''}
+        <div class="detail-id">${escapeHtml(d.id)}</div>
+        <div class="detail-loc">${escapeHtml(d.adm3)}, ${escapeHtml(d.adm2)} &middot; Nonthaburi</div>
       </div>
       <button class="detail-close" id="detailCloseBtn" aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1349,10 +1349,10 @@ function openDetail(d){
         <svg class="ext" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg>
       </a>
       <div class="stat-grid">
-        <div class="stat-tile ${archClass}"><div class="lbl">Archetype</div><div class="val">${d.arch}</div></div>
+        <div class="stat-tile ${archClass}"><div class="lbl">Archetype</div><div class="val">${escapeHtml(d.arch)}</div></div>
         <div class="stat-tile"><div class="lbl">Predicted ARPA</div><div class="val tnum">฿${d.arpa}</div></div>
         <div class="stat-tile ${archClass}"><div class="lbl">Port group</div><div class="val">${portLabel(d.port)}</div></div>
-        <div class="stat-tile"><div class="lbl">HPB No.</div><div class="val mono">${d.hpb}</div></div>
+        <div class="stat-tile"><div class="lbl">HPB No.</div><div class="val mono">${escapeHtml(d.hpb)}</div></div>
       </div>
       <div class="promo-head">
         <h3>Eligible packages</h3>
@@ -1795,7 +1795,7 @@ function renderFeedback(){
         className:'fb-pin-outer', iconSize:[22,22], iconAnchor:[11,22]
       })
     });
-    marker.bindTooltip(`${l2id}${group.length>1 ? ` (${group.length} notes)` : ''}`, { direction:'top', offset:[0,-18], className:'l2-tooltip' });
+    marker.bindTooltip(`${escapeHtml(l2id)}${group.length>1 ? ` (${group.length} notes)` : ''}`, { direction:'top', offset:[0,-18], className:'l2-tooltip' });
     marker.on('click', ()=> group.length>1 ? openFeedbackGroupDetail(l2id, group) : openFeedbackDetail(group[0]));
     feedbackPinLayer.addLayer(marker);
   });
@@ -1977,7 +1977,7 @@ function initApp(){
       ? makeTouchPin(d)
       : L.marker([d.lat, d.lon], { icon: pinIconDetailed(d.cond.discPct*100, false) });
     marker.l2idx = i;
-    marker.bindTooltip(locationLabel(d).primary, {
+    marker.bindTooltip(escapeHtml(locationLabel(d).primary), {
       direction:'top', offset: IS_TOUCH ? [0,-13] : [0,-32], className:'l2-tooltip'
     });
     if(IS_TOUCH){
